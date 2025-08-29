@@ -1,0 +1,211 @@
+/* ====== Header 基本 ====== */
+.header {
+  background: #0a0a1a;
+  color: #fff;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.8rem 1.5rem;
+  position: relative; /* 讓 popover 可相對定位 */
+}
+
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+}
+
+/* 返回 */
+.back-button {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  margin-right: 0.5rem;
+  display: flex;
+  align-items: center;
+}
+.back-button .icon {
+  width: 22px; height: 22px;
+  opacity: 0.9;
+  filter: invert(100%);
+}
+.back-button .icon:hover { opacity: 1; }
+
+/* 標題與副標 */
+.logo { width: 28px; height: 28px; }
+
+.title {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 700;
+}
+
+.subtitle {
+  margin: 0;
+  font-size: 0.8rem;
+  color: #aaa;
+  max-width: 50vw;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  position: relative; /* popover 參考 */
+}
+
+.updated { font-size: 0.8rem; color: #bbb; }
+
+.icon {
+  width: 22px; height: 22px;
+  cursor: pointer;
+  opacity: 0.9;
+}
+.icon:hover { opacity: 1; }
+
+/* ====== 鈴鐺與徽章 ====== */
+.bell-wrapper {
+  position: relative;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+}
+.bell-wrapper .icon { display: block; }
+
+.bell-wrapper .badge {
+  position: absolute;
+  top: -6px; right: -6px;
+  min-width: 18px; height: 18px;
+  padding: 0 5px;
+  border-radius: 9px;
+  background: #e02424;
+  color: #fff;
+  font-size: 11px;
+  line-height: 18px;
+  text-align: center;
+  font-weight: 700;
+}
+
+/* ====== Popover（強化可見度）====== */
+.bell-popover {
+  position: absolute;
+  top: 40px; right: 0;
+  width: 340px;
+
+  background: #fff;
+  color: #111827;
+
+  border: 2px solid #e5e7eb;
+  border-radius: 12px;
+  box-shadow: 0 16px 40px rgba(0,0,0,0.32);
+  z-index: 2000;
+  overflow: hidden;
+  font-size: 0.95rem;
+
+  opacity: 0;
+  transform: translateY(-6px) scale(0.98);
+  animation: bell-popover-in 160ms ease-out forwards;
+}
+
+/* 尖角指向鈴鐺 */
+.bell-popover::before {
+  content: "";
+  position: absolute;
+  top: -8px; right: 16px;
+  width: 12px; height: 12px;
+  background: #fff;
+  border-left: 2px solid #e5e7eb;
+  border-top: 2px solid #e5e7eb;
+  transform: rotate(45deg);
+  box-shadow: -3px -3px 12px rgba(0,0,0,0.06);
+}
+
+/* 標題列更顯眼 */
+.bell-popover header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem 1rem;
+
+  background: #f1f5f9;   /* 比原本更深一點的灰底 */
+  color: #000000 !important;   /* 強制黑色 */
+  font-weight: 800;
+  letter-spacing: 0.2px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+/* 內容區 */
+.bell-popover .alert-list {
+  max-height: 260px;
+  overflow-y: auto;
+  background: #fff;
+}
+
+.bell-popover .alert-item {
+  padding: 0.8rem 1rem;
+  border-bottom: 1px solid #eef2f7;
+}
+.bell-popover .alert-item:last-child { border-bottom: none; }
+
+/* 空狀態更醒目（灰底塊） */
+.bell-popover .empty {
+  margin: 0.8rem 1rem;
+  padding: 0.9rem 1rem;
+  border-radius: 10px;
+  background: #f3f4f6;
+  color: #374151;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.6);
+}
+
+/* Footer / Close */
+.bell-popover footer {
+  display: flex;
+  justify-content: flex-end;
+  padding: 0.65rem 1rem;
+  background: #f1f5f9;
+  border-top: 1px solid #e5e7eb;
+}
+.bell-popover footer button,
+.bell-popover header .close {
+  background: none;
+  border: none;
+  color: #2563eb;
+  font-size: 0.9rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+.bell-popover footer button:hover,
+.bell-popover header .close:hover {
+  text-decoration: underline;
+}
+
+/* 進場動畫 */
+@keyframes bell-popover-in {
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* ====== 手機優化 (≤600px) ====== */
+@media (max-width: 600px) {
+  .header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+  }
+  .header-right {
+    width: 100%;
+    justify-content: flex-end;
+  }
+  .bell-popover {
+    right: 6px;
+    width: 92vw;
+  }
+}

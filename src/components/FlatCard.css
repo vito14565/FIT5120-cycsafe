@@ -1,0 +1,96 @@
+.card.flat {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: white;
+  border: 1px solid #eee;
+  border-radius: 12px;
+  margin-bottom: 1rem;
+  padding: 1rem 1.2rem;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+}
+
+/* 左側 */
+.card-left {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+}
+
+.icon-wrapper {
+  background: #f2f5ff; /* 淺藍背景 */
+  border-radius: 50%;
+  padding: 0.6rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.icon-wrapper img,
+.icon-wrapper svg {
+  width: 24px;
+  height: 24px;
+}
+
+.card-title {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: bold;
+  color: #111;
+}
+
+.card-subtitle {
+  margin: 0;
+  font-size: 0.85rem;
+  color: #666;
+}
+
+.card-links {
+  margin-top: 0.3rem;
+  font-size: 0.85rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+}
+
+.card-links .dot {
+  color: #aaa;
+}
+
+/* ✅ 移除所有卡片內超連結底線 + 保持顏色繼承 */
+.card a,
+.card-action,
+.card-links a,
+.card-links span {
+  text-decoration: none;
+  color: inherit;
+  transition: color 0.2s ease;
+}
+
+/* 右側 Action */
+.card-action {
+  font-size: 0.9rem;
+  color: #333;
+  white-space: nowrap;
+  cursor: pointer;
+  font-weight: 500;
+}
+
+/* ✅ hover 統一：變藍色、不加底線 */
+.card a:hover,
+.card-action:hover,
+.card-links a:hover {
+  color: #3b82f6;
+  text-decoration: none;
+}
+
+@media (max-width: 768px) {
+  .card.flat {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.8rem;
+  }
+  .card-action {
+    align-self: flex-end;
+  }
+}

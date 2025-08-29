@@ -1,0 +1,334 @@
+/* ================== Plan Route Page ================== */
+.plan-route-page {
+  max-width: 900px;          /* ✅ 限制最大寬度 */
+  margin: 2rem auto;
+  padding: 0 1rem;           /* ✅ 保留左右內距避免貼邊 */
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  color: #111827;
+  box-sizing: border-box;
+}
+
+/* 🃏 通用卡片樣式 */
+.card {
+  background: #fff;
+  border: 1px solid #ddd;
+  border-radius: 10px;
+  padding: 1.5rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  width: 100%;               /* ✅ 卡片跟隨容器寬度 */
+  box-sizing: border-box;    /* ✅ 避免 padding 撐爆 */
+}
+
+/* 🚴 Form 區塊 */
+.route-form h2 {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0 0 1rem 0;
+  font-size: 1.35rem;
+  font-weight: 600;
+}
+
+.route-form h2 .icon {
+  width: 22px;
+  height: 22px;
+  color: #111827;
+}
+
+.route-form input {
+  width: 100%;
+  padding: 0.6rem;
+  margin-bottom: 0.8rem;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  box-sizing: border-box;
+}
+
+.route-form input:focus {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.2);
+  outline: none;
+}
+
+.route-form button {
+  width: 100%;
+  padding: 0.8rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  background: #111827;
+  color: white;
+  font-weight: bold;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.route-form button:hover {
+  background: #374151;
+}
+
+.route-form button .icon {
+  width: 18px;
+  height: 18px;
+  color: white;
+}
+
+/* 🚴 Routes 區塊 */
+.recommended-routes h3 {
+  margin-bottom: 1rem;
+  font-size: 1.2rem;
+  font-weight: 600;
+}
+
+.route-card {
+  padding: 1.2rem;
+  margin-bottom: 1rem;
+  width: 100%;               /* ✅ 跟隨容器寬度 */
+  box-sizing: border-box;
+}
+
+.route-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.6rem;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.title-meta {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.route-header h4 {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
+/* ✅ 顯示 km & mins (帶 icon) */
+.meta {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  font-size: 0.9rem;
+  color: #555;
+}
+
+.meta-item {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.meta-icon {
+  width: 16px;
+  height: 16px;
+  opacity: 0.8;
+}
+
+/* 🛡 安全/風險 Badge */
+.badges {
+  display: flex;
+  gap: 0.4rem;
+}
+
+.safety-badge,
+.risk-badge {
+  padding: 0.25rem 0.6rem;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+/* ✅ Safety Badge */
+.safety-badge.high {
+  background: #00800020;
+  color: #008000;
+  border: 1px solid #008000;
+}
+.safety-badge.medium {
+  background: #facc1520;
+  color: #b45309;
+  border: 1px solid #f59e0b;
+}
+.safety-badge.low {
+  background: #ef444420;
+  color: #b91c1c;
+  border: 1px solid #ef4444;
+}
+
+/* ✅ Risk Badge */
+.risk-badge.low {
+  background: #00800020;
+  color: #008000;
+  border: 1px solid #008000;
+}
+.risk-badge.medium {
+  background: #facc1520;
+  color: #b45309;
+  border: 1px solid #f59e0b;
+}
+.risk-badge.high {
+  background: #ef444420;
+  color: #b91c1c;
+  border: 1px solid #ef4444;
+}
+
+/* 🌟 highlights & warnings */
+.highlights,
+.warnings {
+  margin: 0.6rem 0;
+}
+
+.highlights strong {
+  display: block;
+  margin-bottom: 0.3rem;
+  font-weight: 600;
+  color: #008000;
+}
+
+.warnings strong {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  margin-bottom: 0.3rem;
+  font-weight: 600;
+  color: #b91c1c;
+}
+
+.warnings strong::before {
+  content: "⚠";
+  color: #b91c1c;
+}
+
+/* list */
+.highlights ul,
+.warnings ul {
+  margin: 0;
+  padding-left: 1.2rem;
+  font-size: 0.9rem;
+}
+
+.highlights ul li,
+.warnings ul li {
+  position: relative;
+  list-style: none;
+  margin: 0.2rem 0;
+}
+
+.highlights ul li::before {
+  content: "•";
+  color: #008000;
+  font-weight: bold;
+  display: inline-block;
+  width: 1rem;
+  margin-left: -1rem;
+}
+
+.warnings ul li::before {
+  content: "•";
+  color: #b91c1c;
+  font-weight: bold;
+  display: inline-block;
+  width: 1rem;
+  margin-left: -1rem;
+}
+
+/* infra row */
+.infra {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.9rem;
+  color: #222;
+}
+
+.infra-icon {
+  width: 16px;
+  height: 16px;
+  opacity: 0.9;
+}
+
+/* 🎬 actions */
+.card-actions {
+  display: flex;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.card-actions button {
+  flex: 1;
+  padding: 0.65rem;
+  border-radius: 6px;
+  border: none;
+  cursor: pointer;
+  font-weight: bold;
+  transition: background 0.2s;
+}
+
+.card-actions button.primary {
+  background: #111827;
+  color: white;
+}
+.card-actions button.primary:hover {
+  background: #374151;
+}
+
+.card-actions button.secondary {
+  background: #f3f4f6;
+  color: #111827;
+}
+.card-actions button.secondary:hover {
+  background: #e5e7eb;
+}
+
+/* 💡 Tips Box */
+.tips-box {
+  background: #f0f9ff;
+  border: 1px solid #bae6fd;
+  border-radius: 8px;
+  padding: 1rem;
+  margin-top: 0.5rem;
+}
+
+.tips-box h3 {
+  margin-top: 0;
+  font-size: 1rem;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+}
+
+.tips-box ul {
+  margin: 0;
+  padding-left: 1.2rem;
+  font-size: 0.9rem;
+  color: #333;
+}
+
+/* 📱 RWD: 手機直排 */
+@media (max-width: 640px) {
+  .route-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.4rem;
+  }
+  .meta {
+    flex-wrap: wrap;
+    gap: 0.6rem;
+  }
+  .card-actions {
+    flex-direction: column;
+    width: 100%;
+  }
+}

@@ -1,0 +1,67 @@
+/* General */
+body {
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  background-color: #f5f5f5;
+  color: #111;
+  margin: 0;
+  line-height: 1.5;
+}
+
+/* Container */
+.container {
+  max-width: 900px;
+  margin: 2rem auto;
+  padding: 0 1rem;
+}
+
+/* Text styles */
+.risk {
+  font-size: 1.5rem;
+  margin: 0.5rem 0;
+}
+
+.success {
+  color: #16a34a;
+}
+
+.info {
+  color: #2563eb;
+}
+
+.purple {
+  color: #9333ea;
+}
+
+.orange {
+  color: #ea580c;
+}
+
+/* Button */
+.btn {
+  background: #f9f9f9;
+  color: #111;
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  border: 1px solid #ddd;
+  cursor: pointer;
+  font-weight: 500;
+  transition: background 0.2s ease;
+}
+
+.btn:hover {
+  background: #eee;
+}
+
+/* ======================= */
+/* Links (全域設定超連結樣式) */
+/* ======================= */
+a {
+  text-decoration: none;  /* ❌ 移除底線 */
+  color: inherit;         /* ✅ 跟隨父層顏色 */
+  transition: color 0.2s ease;
+}
+
+a:hover {
+  color: #3b82f6;         /* hover 時變藍色 */
+  text-decoration: none;  /* ❌ 不要底線 */
+}

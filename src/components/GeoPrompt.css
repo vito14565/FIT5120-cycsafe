@@ -1,0 +1,118 @@
+/* 外層 Paper 做透明，真正的卡片在 .geo-dark-body */
+.geo-dark-body {
+  width: min(720px, 92vw);
+  max-width: 92vw;
+  background: #131826;
+  color: #e8edf7;
+  border-radius: 22px;
+  padding: 36px 28px 22px;         /* ↑ 上方多留空間給 pin */
+  box-shadow: 0 18px 48px rgba(0,0,0,.35);
+  position: relative;              /* 讓 pin 絕對定位的參考點 */
+  overflow: visible;               /* ⭐ 允許 pin 超出卡片 */
+}
+
+/* 紅色小圖釘（置中、浮於卡片外） */
+.geo-top-pin {
+  position: absolute;
+  top: -18px;                      /* 掛在外側 */
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 26px;                 /* 放大到與設計一致 */
+  line-height: 1;
+  z-index: 2;                      /* 壓過內容 */
+  pointer-events: none;            /* 不阻擋點擊 */
+  filter: drop-shadow(0 2px 4px rgba(0,0,0,.35));
+}
+
+.geo-title {
+  margin: 6px 0 8px;
+  font-weight: 800;
+  font-size: 28px;
+  line-height: 1.2;
+  text-align: center;
+}
+.geo-brand { color: #fef08a; }
+.geo-sub {
+  margin: 0 0 18px;
+  text-align: center;
+  opacity: .9;
+  font-size: 16px;
+}
+
+/* 兩個選項卡 */
+.geo-choices {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18px;
+  margin: 10px 0 18px;
+}
+.geo-choice {
+  background: #0f1421;
+  border: 2px solid #2a3143;
+  border-radius: 18px;
+  padding: 16px;                   /* 稍微放大 */
+  text-align: left;
+  cursor: pointer;
+  transition: border-color .15s, box-shadow .15s, transform .08s;
+}
+.geo-choice.active {
+  border-color: #ffd54a;
+  box-shadow: 0 0 0 3px rgba(255,213,74,.22) inset;
+}
+.geo-choice:hover { border-color: #3a4359; }
+.geo-choice:active { transform: scale(.99); }
+
+.geo-illus {
+  width: 100%;
+  height: auto;
+  border-radius: 12px;
+  display: block;
+  margin-bottom: 10px;
+}
+
+.geo-choice-text strong { display: block; color: #fff; }
+.geo-choice-text span { color: #b9c1d6; font-size: 14px; }
+
+/* CTA 按鈕 */
+.geo-cta {
+  margin-top: 8px;
+  display: grid;
+  gap: 10px;
+}
+.geo-btn {
+  height: 56px;
+  border-radius: 14px;
+  font-weight: 800;
+  font-size: 16px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+.geo-btn.primary {
+  background: #ffd7ce;
+  color: #111827;
+  border: none;
+}
+.geo-btn.primary:disabled { opacity: .7; }
+.geo-btn.ghost {
+  background: transparent;
+  border: none;
+  color: #9aa3b2;
+}
+
+/* 桌面放大版（>= 1024px） */
+@media (min-width: 1024px) {
+  .geo-dark-body { padding: 42px 34px 26px; } /* 再多一點頂部空間 */
+  .geo-title { font-size: 32px; }
+  .geo-sub { font-size: 18px; }
+  .geo-choices { gap: 22px; }
+  .geo-btn { height: 60px; font-size: 17px; }
+  .geo-top-pin { top: -22px; font-size: 28px; }
+}
+
+/* 小螢幕細節 */
+@media (max-width: 420px) {
+  .geo-dark-body { padding-top: 30px; }
+  .geo-top-pin { top: -14px; font-size: 22px; }
+}

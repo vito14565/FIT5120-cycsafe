@@ -1,0 +1,9 @@
+.alert-card-wrapper {
+  border-radius: 12px;                /* 整個卡片圓角 */
+  overflow: hidden;                   /* 讓 header 和 body 無縫貼合 */
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+  margin-bottom: 1rem;
+  display: flex;
+  flex-direction: column;             /* 保證上下排列 */
+  background-color: white;            /* 預設白底 */
+}

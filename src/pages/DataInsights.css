@@ -1,0 +1,317 @@
+/* ================= Insights Page Container ================= */
+.insights-page {
+  max-width: 900px;
+  margin: 2rem auto;
+  padding: 0 1rem;
+}
+
+/* ================= Stats Grid (上面四個卡片) ================= */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+  margin-top: 1.5rem;
+}
+
+.stat-card {
+  background: #fff;
+  border: 1px solid #eee;
+  border-radius: 12px;
+  padding: 1.2rem;
+  text-align: center;
+  font-weight: bold;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.stat-card h3 {
+  font-size: 1.8rem;
+  margin: 0;
+}
+
+.stat-card p {
+  margin: 0.4rem 0;
+  font-size: 0.9rem;
+}
+
+.stat-card small {
+  color: #666;
+  font-size: 0.8rem;
+}
+
+/* 顏色分類 */
+.stat-card.red h3 { color: #dc2626; }
+.stat-card.orange h3 { color: #f97316; }
+.stat-card.green h3 { color: #16a34a; }
+.stat-card.purple h3 { color: #9333ea; }
+
+/* ================= Insights Sections ================= */
+.insight-section {
+  background: #fff;
+  border: 1px solid #eee;
+  border-radius: 12px;
+  padding: 1.2rem;
+  margin-top: 1.5rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.insight-section h3 {
+  margin: 0 0 1rem;
+  font-size: 1.1rem;
+  font-weight: bold;
+  color: #111;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+/* 標題小圖示 (SVG icons) */
+.section-icon {
+  width: 18px;
+  height: 18px;
+  object-fit: contain;
+  flex-shrink: 0;
+  margin-top: -1px; /* 微調，對齊文字基線 */
+}
+
+.insight-section ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+/* ================= Risk by Time ================= */
+.insight-section.risk-time ul {
+  display: grid;
+  row-gap: 0.6rem;
+}
+
+.insight-section.risk-time li {
+  display: grid;
+  grid-template-columns: 120px 150px 1fr;
+  align-items: center;
+  font-size: 0.9rem;
+  color: #333;
+}
+
+.time-label {
+  font-weight: 500;
+  color: #111;
+}
+
+.badge {
+  padding: 0.3rem 0.8rem;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  font-weight: bold;
+  text-align: center;
+  justify-self: start;
+}
+
+.badge.low { background: #e6f9ec; color: #16a34a; }
+.badge.medium { background: #fff8e6; color: #f59e0b; }
+.badge.high { background: #ffeaea; color: #dc2626; }
+
+.incidents {
+  justify-self: end;
+  color: #555;
+  font-size: 0.85rem;
+  white-space: nowrap;
+}
+
+/* ================= High-Risk Areas ================= */
+.insight-section.high-risk ul {
+  display: grid;
+  row-gap: 0.6rem;
+}
+
+.insight-section.high-risk li {
+  display: grid;
+  grid-template-columns: 160px 150px 1fr;
+  align-items: center;
+  font-size: 0.9rem;
+  color: #333;
+  column-gap: 1rem;
+}
+
+.area-label {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-weight: 500;
+}
+
+.trend-icon {
+  width: 16px;
+  height: 16px;
+  object-fit: contain;
+}
+
+.infra-badge {
+  padding: 0.3rem 0.8rem;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-align: center;
+  min-width: 130px;
+  justify-self: start;
+}
+
+/* 不同 infrastructure 的顏色 */
+.infra-badge.excellent { background: #e6f9ec; color: #16a34a; }
+.infra-badge.good { background: #e6f0ff; color: #2563eb; }
+.infra-badge.fair { background: #fff8e6; color: #f59e0b; }
+.infra-badge.mixed { background: #f3f4f6; color: #6b7280; }
+.infra-badge.poor { background: #ffeaea; color: #dc2626; }
+
+/* ================= Behavioral Patterns ================= */
+.insight-section.behavioral ul {
+  display: grid;
+  row-gap: 0.8rem;
+}
+
+.insight-section.behavioral li {
+  display: grid;
+  grid-template-columns: 1fr 120px;
+  align-items: center;
+  font-size: 0.9rem;
+  color: #333;
+  padding: 0.6rem 0;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.insight-section.behavioral li:last-child {
+  border-bottom: none;
+}
+
+/* 左側文字區塊 */
+.behavior-text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.behavior-text strong {
+  font-size: 0.95rem;
+  color: #111;
+}
+
+.behavior-text p {
+  margin: 0;
+  font-size: 0.85rem;
+  color: #555;
+}
+
+/* 建議區塊 (盾牌 + 連結) */
+.pattern-action {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.8rem;
+  color: #2563eb;
+}
+
+.pattern-action a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.pattern-action a:hover {
+  text-decoration: underline;
+}
+
+/* 盾牌 icon 永遠跟隨文字顏色 */
+.action-icon {
+  width: 14px;
+  height: 14px;
+  object-fit: contain;
+  flex-shrink: 0;
+  fill: currentColor;   /* ✅ 對 <path fill> 生效 */
+  stroke: currentColor; /* ✅ 對 <path stroke> 生效 */
+}
+
+/* Impact 標籤 */
+.impact {
+  font-size: 0.8rem;
+  font-weight: bold;
+  padding: 0.4rem 0.8rem;
+  border-radius: 6px;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.impact.high { background: #ffeaea; color: #dc2626; }
+.impact.critical { background: #dc2626; color: #fff; }
+
+/* ================= Seasonal Risk Patterns ================= */
+.season-grid.horizontal {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+.season {
+  padding: 1rem;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.season strong {
+  display: block;
+  font-size: 1rem;
+  margin-bottom: 0.2rem;
+}
+
+.season p.highlight {
+  font-weight: 600;
+  margin: 0;
+}
+
+.season small {
+  font-size: 0.8rem;
+  color: #555;
+}
+
+/* 不同季節背景 + 顏色 */
+.season.winter { background: #f0f5ff; color: #2563eb; }
+.season.spring { background: #ecfdf5; color: #059669; }
+.season.summer { background: #fff7ed; color: #ea580c; }
+.season.autumn { background: #fefce8; color: #d97706; }
+
+/* ================= Key Takeaways ================= */
+.takeaway {
+  background: linear-gradient(to right, #eef2ff, #fdf2f8);
+  border: 1px solid #e5e7eb;
+}
+
+.takeaway ul {
+  padding-left: 1rem;
+}
+
+.takeaway li {
+  list-style: disc;
+  margin: 0.5rem 0;
+}
+
+/* 📱 RWD 手機補強 */
+@media (max-width: 768px) {
+  .insight-section.risk-time li {
+    grid-template-columns: 1fr;
+    row-gap: 0.3rem;
+  }
+  .insight-section.high-risk li {
+    grid-template-columns: 1fr;
+    row-gap: 0.3rem;
+  }
+  .infra-badge {
+    min-width: unset;
+    width: fit-content;
+  }
+  .season-grid.horizontal {
+    grid-template-columns: 1fr; /* 小螢幕改單欄 */
+  }
+}

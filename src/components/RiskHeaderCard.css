@@ -1,0 +1,35 @@
+/* 整張卡的上半部（薄、滿寬、無外距） */
+.risk-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;                 /* 薄一點 */
+  color: #fff;
+}
+
+/* 動態顏色 */
+.risk-header.low    { background: linear-gradient(90deg,#22c55e,#16a34a); }
+.risk-header.medium { background: linear-gradient(90deg,#facc15,#f97316); }
+.risk-header.high   { background: linear-gradient(90deg,#ef4444,#b91c1c); }
+
+/* 左側：icon + 兩行字 */
+.rh-left { display: flex; align-items: center; gap: 10px; }
+.rh-icon { display: inline-flex; width: 18px; height: 18px; }
+.rh-icon img, .rh-icon svg { width: 18px; height: 18px; }
+
+.rh-text h3 {
+  margin: 0;
+  font-size: 14px;                    /* 小字級 */
+  line-height: 1.1;
+  font-weight: 600;
+}
+.rh-text p {
+  margin: 2px 0 0 0;
+  font-size: 12px;
+  opacity: .9;
+}
+
+/* 右側：百分比 + 文字，靠右對齊 */
+.rh-right { text-align: right; }
+.rh-level { font-size: 14px; font-weight: 700; line-height: 1; }
+.rh-tag   { font-size: 11px; opacity: .95; margin-top: 4px; }
