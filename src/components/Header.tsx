@@ -6,7 +6,7 @@ import settings from "../assets/settings.svg";
 import arrowLeft from "../assets/arrow-left.svg";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useEffect, useState } from "react";
-import AlertTray from "./AlertTray"; // 不再 import 型別，避免耦合
+import AlertTray from "./AlertTray";
 
 export default function Header() {
   const navigate = useNavigate();
@@ -14,12 +14,12 @@ export default function Header() {
   const isHome = locationPath === "/";
 
   const [address, setAddress] = useState("");
-  const [alertCount, setAlertCount] = useState(0);   // 由 alertsService 寫入/廣播
-  const [bellCount, setBellCount]   = useState(0);   // 由 notify.ts 本地提升
+  const [alertCount, setAlertCount] = useState(0); // 由 alertsService 寫入/廣播
+  const [bellCount, setBellCount] = useState(0);   // 由 notify.ts 本地提升
 
-  // 托盤開關 & 清單（不綁型別，讓 AlertTray 自己渲染）
+  // 托盤狀態
   const [openTray, setOpenTray] = useState(false);
-  const [alerts, setAlerts]     = useState<any[]>([]);
+  const [alerts, setAlerts] = useState<any[]>([]);
 
   // 「Updated … ago」
   const [updatedLabel, setUpdatedLabel] = useState("Updated just now");
@@ -31,6 +31,7 @@ export default function Header() {
       if (cached) setAddress(cached);
     } catch {}
 
+    // 地址更新事件
     const onAddr = (e: Event) => {
       const detail = (e as CustomEvent).detail as string | undefined;
       if (detail) setAddress(detail);
@@ -103,10 +104,9 @@ export default function Header() {
     };
   }, []);
 
-  // 切頁時關閉托盤，避免殘留
+  // 切頁時關閉托盤
   useEffect(() => { setOpenTray(false); }, [locationPath]);
 
-  // 點鈴鐺：切換 + 促發立即刷新（避免 S3 圖過期 / ack 後未刷新）
   const onBellClick = () => {
     setOpenTray(v => !v);
     window.dispatchEvent(new CustomEvent("cs:alerts:maybeChanged"));
@@ -121,7 +121,12 @@ export default function Header() {
     setUpdatedLabel(`Updated ${m} minute${m > 1 ? "s" : ""} ago`);
   }
 
-  // 徽章數：取 alerts 總數與 bell 計數的最大值（只要任一來源提醒就亮）
+  // Header 的「Change」→ 交給 Home.tsx 打開 GeoPrompt
+  const onChangeLocation = () => {
+    window.dispatchEvent(new CustomEvent("cs:prompt-geo"));
+  };
+
+  // 徽章數：取 alerts 總數與 bell 計數的最大值
   const badge = Math.max(alertCount, bellCount);
 
   return (
@@ -133,9 +138,21 @@ export default function Header() {
           </button>
         )}
         <img src={location} alt="Location" className="logo" />
-        <div>
+        <div className="title-wrap">
           <h1 className="title">CycSafe</h1>
-          <p className="subtitle">{address || "Locating…"}</p>
+          <div className="subtitle-row">
+            <p className="subtitle" title={address || "Locating…"}>
+              {address || "Locating…"}
+            </p>
+            <button
+              type="button"
+              className="change-link"
+              onClick={onChangeLocation}
+              aria-label="Change location"
+            >
+              Change
+            </button>
+          </div>
         </div>
       </div>
 
@@ -155,7 +172,7 @@ export default function Header() {
 
         <img src={settings} alt="Settings" className="icon" />
 
-        {/* 托盤放在 header-right 內，以絕對定位靠右 */}
+        {/* 托盤靠右絕對定位 */}
         <AlertTray open={openTray} onClose={() => setOpenTray(false)} alerts={alerts} />
       </div>
     </header>
