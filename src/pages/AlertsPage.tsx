@@ -8,6 +8,7 @@ import trafficIcon from "../assets/traffic.svg";
 import infrastructureIcon from "../assets/infrastructure.svg";
 import warningIcon from "../assets/warning.svg";
 import bellOutlineIcon from "../assets/bell-outline.svg";
+import { timeFromNow } from "../lib/time";
 
 type Priority = "CRITICAL" | "HIGH" | "MEDIUM" | "LOW";
 type Category = "WEATHER" | "TRAFFIC" | "INFRA" | "SAFETY";
@@ -16,7 +17,9 @@ type AlertModel = {
   title: string;
   description: string;
   location: string;
-  time: string;          // UI 顯示字串即可
+  // time 改為可選，實際會由 timestamp 動態計算
+  time?: string;
+  timestamp?: number | string; // ← 新增，用於相對時間
   priority: Priority;
   category: Category;
 };
@@ -51,10 +54,19 @@ const RAIN_HIGH = 3.0;  // mm/h
 export default function AlertsPage() {
   const [alerts, setAlerts] = useState<AlertModel[]>([]);
   const [address, setAddress] = useState<string>("");
+  const [, setTick] = useState(0); // 每分鐘觸發重算相對時間
 
   // 最新座標記在 ref，供輪詢 & 事件回呼使用
   const coordsRef = useRef<{ lat: number; lon: number }>(FALLBACK);
   const pollRef   = useRef<number | null>(null);
+
+  /** 安全清洗：過濾 undefined/空事件、缺少必要欄位的事件 */
+  const sanitizeIncidents = (list: AlertModel[]) => {
+    return (list || [])
+      .filter(Boolean)
+      .filter(x => x.title || x.description)
+      .filter(x => x.timestamp != null);
+  };
 
   /** 根據風/雨組裝一張 Weather Alert（不到門檻回 null） */
   const buildWeatherAlert = (data: RiskResp): AlertModel | null => {
@@ -70,7 +82,7 @@ export default function AlertsPage() {
         title: "Severe Weather Warning",
         description: `Strong winds (~${Math.round(ws)} m/s) or heavy rain (${rain.toFixed(1)} mm/h). Reduced visibility and hazardous conditions.`,
         location: addr || "Your area",
-        time: "0 minutes ago",
+        timestamp: Date.now(),            // ← 不再塞固定字串時間
         priority: "HIGH",
         category: "WEATHER",
       };
@@ -80,7 +92,7 @@ export default function AlertsPage() {
         title: "Weather Alert",
         description: `Wind ~ ${Math.round(ws)} m/s • Rain ${rain.toFixed(1)} mm/h • Please ride with caution.`,
         location: addr || "Your area",
-        time: "0 minutes ago",
+        timestamp: Date.now(),            // ← 不再塞固定字串時間
         priority: "MEDIUM",
         category: "WEATHER",
       };
@@ -107,20 +119,21 @@ export default function AlertsPage() {
         window.dispatchEvent(new CustomEvent("cs:address", { detail: addr }));
       } catch {}
 
-      const weatherAlert = data.ok ? buildWeatherAlert(data) : null;
       const next: AlertModel[] = [];
+      const weatherAlert = data.ok ? buildWeatherAlert(data) : null;
       if (weatherAlert) next.push(weatherAlert);
 
-      setAlerts(next);
+      const cleaned = sanitizeIncidents(next);
+      setAlerts(cleaned);
 
       // 廣播總數 & 清單（給首頁/鈴鐺同步）
       try {
-        const total = next.length;
+        const total = cleaned.length;
         localStorage.setItem("cs.alerts.total", String(total));
         window.dispatchEvent(new CustomEvent("cs:alerts", { detail: { total } }));
 
-        localStorage.setItem("cs.alerts.list", JSON.stringify(next));
-        window.dispatchEvent(new CustomEvent("cs:alerts:list", { detail: { list: next } }));
+        localStorage.setItem("cs.alerts.list", JSON.stringify(cleaned));
+        window.dispatchEvent(new CustomEvent("cs:alerts:list", { detail: { list: cleaned } }));
       } catch {}
     } catch (e) {
       console.error("fetch alerts failed:", e);
@@ -177,10 +190,14 @@ export default function AlertsPage() {
 
     pollRef.current = window.setInterval(poll, 60 * 1000);
 
+    // 讓相對時間每分鐘自動重算（即使沒有新資料）
+    const tickId = window.setInterval(() => setTick(v => v + 1), 60_000);
+
     return () => {
       document.removeEventListener("visibilitychange", onVis);
       window.removeEventListener("focus", onFocus);
       if (pollRef.current) window.clearInterval(pollRef.current);
+      window.clearInterval(tickId);
     };
   }, [fetchAlerts]);
 
@@ -222,7 +239,11 @@ export default function AlertsPage() {
       {alerts.length > 0 && (
         <section className="alerts-list">
           {alerts.map((alert, idx) => (
-            <AlertItem key={idx} {...alert} />
+            <AlertItem
+              key={idx}
+              {...alert}
+              time={timeFromNow(alert.timestamp ?? Date.now())} // ← 動態時間
+            />
           ))}
         </section>
       )}
