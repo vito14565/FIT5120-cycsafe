@@ -179,7 +179,7 @@ export default function Home() {
       const perm: PermissionStatus | undefined = await (navigator as any)?.permissions?.query?.({
         name: "geolocation" as PermissionName,
       });
-      if (perm?.state !== "granted") return false;
+    if (perm?.state !== "granted") return false;
       return await new Promise<boolean>((resolve) => {
         navigator.geolocation.getCurrentPosition(
           (pos) => {
@@ -221,6 +221,13 @@ export default function Home() {
       if (!promptedOnce && !updated) setGeoOpen(true);
     })();
   }, [fetchRisk, trySilentGeolocation]);
+
+  // ===== 接收 Header 的「Change」事件，打開 GeoPrompt =====
+  useEffect(() => {
+    const onPrompt = () => setGeoOpen(true);
+    window.addEventListener("cs:prompt-geo", onPrompt);
+    return () => window.removeEventListener("cs:prompt-geo", onPrompt);
+  }, []);
 
   // ===== 回到分頁才提醒／或靜默更新 =====
   useEffect(() => {
@@ -274,33 +281,13 @@ export default function Home() {
     <main className="container">
       <GeoPrompt open={geoOpen} onGotCoords={onGotCoords} onClose={onClosePrompt} />
 
-      {/* 目前地址 + 手動變更 */}
-      {address && (
-        <p className="text-muted" style={{ margin: "8px 0 6px 2px" }}>
-          {address}
-          <button
-            type="button"
-            onClick={() => setGeoOpen(true)}
-            style={{
-              marginLeft: 8,
-              fontSize: 12,
-              color: "#2563eb",
-              background: "none",
-              border: "none",
-              cursor: "pointer",
-            }}
-          >
-            Change
-          </button>
-        </p>
-      )}
+      {/* 已移除地址段落，地址只在 Header 顯示 */}
 
       <section className="alert-card-wrapper">
         <RiskHeaderCard
           title="Safety Alerts"
           icon={<img src={alertIcon} alt="alert" />}
           riskLevel={riskLevel}
-          riskText={riskText}
         />
         <RiskBodyCard countOverride={alertCount} actionLink="/alerts" actionText="View Details">
           <Link to="/report" className="btn-outline">

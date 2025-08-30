@@ -16,12 +16,8 @@ export default function Header() {
   const [address, setAddress] = useState("");
   const [alertCount, setAlertCount] = useState(0); // 由 alertsService 寫入/廣播
   const [bellCount, setBellCount] = useState(0);   // 由 notify.ts 本地提升
-
-  // 托盤狀態
   const [openTray, setOpenTray] = useState(false);
   const [alerts, setAlerts] = useState<any[]>([]);
-
-  // 「Updated … ago」
   const [updatedLabel, setUpdatedLabel] = useState("Updated just now");
 
   useEffect(() => {
@@ -33,8 +29,8 @@ export default function Header() {
 
     // 地址更新事件
     const onAddr = (e: Event) => {
-      const detail = (e as CustomEvent).detail as string | undefined;
-      if (detail) setAddress(detail);
+      const detail = (e as CustomEvent<string>).detail;
+      if (typeof detail === "string") setAddress(detail);
     };
     window.addEventListener("cs:address", onAddr);
 
@@ -54,12 +50,12 @@ export default function Header() {
 
     // 監聽 alerts 數量/清單
     const onAlerts = (e: Event) => {
-      const total = Number((e as CustomEvent).detail?.total ?? 0);
+      const total = Number((e as CustomEvent<{ total?: number }>).detail?.total ?? 0);
       setAlertCount(Number.isFinite(total) ? total : 0);
       bumpUpdatedLabel();
     };
     const onList = (e: Event) => {
-      const list = (e as CustomEvent).detail?.list ?? [];
+      const list = (e as CustomEvent<{ list?: any[] }>).detail?.list ?? [];
       if (Array.isArray(list)) setAlerts(list);
     };
     window.addEventListener("cs:alerts", onAlerts);
@@ -67,7 +63,7 @@ export default function Header() {
 
     // 監聽本地 bell 提醒
     const onBell = (e: Event) => {
-      const cnt = Number((e as CustomEvent).detail?.count ?? 0);
+      const cnt = Number((e as CustomEvent<{ count?: number }>).detail?.count ?? 0);
       if (Number.isFinite(cnt)) setBellCount(cnt);
     };
     window.addEventListener("cs:bell", onBell);
@@ -121,7 +117,7 @@ export default function Header() {
     setUpdatedLabel(`Updated ${m} minute${m > 1 ? "s" : ""} ago`);
   }
 
-  // Header 的「Change」→ 交給 Home.tsx 打開 GeoPrompt
+  // Header 的「Change」→ 丟事件給 Home.tsx 打開 GeoPrompt
   const onChangeLocation = () => {
     window.dispatchEvent(new CustomEvent("cs:prompt-geo"));
   };
