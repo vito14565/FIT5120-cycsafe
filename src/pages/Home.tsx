@@ -6,6 +6,7 @@ import RiskBodyCard from "../components/RiskBodyCard";
 import "../components/AlertCardWrapper.css";
 import FlatCard from "../components/FlatCard";
 import GeoPrompt, { type Coords } from "../components/GeoPrompt";
+import ReportFab from "../components/ReportFab";
 
 import alertIcon from "../assets/alert.svg";
 import routeIcon from "../assets/route.svg";
@@ -132,13 +133,13 @@ export default function Home() {
       const alert: WeatherAlert = {
         clusterId,
         incidentType: "severe_weather",
-        description: desc,            // ⭐ 不再把地址塞進 description
+        description: desc,
         severity: sev,
         expiresAt: Math.floor(Date.now() / 1000) + ttlMin * 60,
         ackable: false,
-        photoUrls: [],                // ⭐ 明確不帶圖片，避免 403
-        address: addr,                // ⭐ AlertTray 右上角
-        agoText: "0 minutes ago",     // ⭐ AlertTray 右上角
+        photoUrls: [],
+        address: addr,
+        agoText: "0 minutes ago",
       };
       upsertWeatherAlert(alert);
     },
@@ -179,7 +180,7 @@ export default function Home() {
       const perm: PermissionStatus | undefined = await (navigator as any)?.permissions?.query?.({
         name: "geolocation" as PermissionName,
       });
-    if (perm?.state !== "granted") return false;
+      if (perm?.state !== "granted") return false;
       return await new Promise<boolean>((resolve) => {
         navigator.geolocation.getCurrentPosition(
           (pos) => {
@@ -278,7 +279,7 @@ export default function Home() {
   };
 
   return (
-    <main className="container">
+    <main className="container has-fab">
       <GeoPrompt open={geoOpen} onGotCoords={onGotCoords} onClose={onClosePrompt} />
 
       {/* 已移除地址段落，地址只在 Header 顯示 */}
@@ -319,6 +320,9 @@ export default function Home() {
           { text: "30–39 age insights", className: "orange" },
         ]}
       />
+
+      {/* 右下角小圓 FAB（行動/平板/桌機皆適配） */}
+      <ReportFab />
     </main>
   );
 }
