@@ -17,9 +17,8 @@ type AlertModel = {
   title: string;
   description: string;
   location: string;
-  // time 改為可選，實際會由 timestamp 動態計算
   time?: string;
-  timestamp?: number | string; // ← 新增，用於相對時間
+  timestamp?: number | string;
   priority: Priority;
   category: Category;
 };
@@ -58,7 +57,9 @@ export default function AlertsPage() {
 
   // 最新座標記在 ref，供輪詢 & 事件回呼使用
   const coordsRef = useRef<{ lat: number; lon: number }>(FALLBACK);
-  const pollRef   = useRef<number | null>(null);
+
+  // 只保留一個在途請求；每次新發請求會中止舊請求（避免重入/重複）
+  const controllerRef = useRef<AbortController | null>(null);
 
   /** 安全清洗：過濾 undefined/空事件、缺少必要欄位的事件 */
   const sanitizeIncidents = (list: AlertModel[]) => {
@@ -82,7 +83,7 @@ export default function AlertsPage() {
         title: "Severe Weather Warning",
         description: `Strong winds (~${Math.round(ws)} m/s) or heavy rain (${rain.toFixed(1)} mm/h). Reduced visibility and hazardous conditions.`,
         location: addr || "Your area",
-        timestamp: Date.now(),            // ← 不再塞固定字串時間
+        timestamp: Date.now(),
         priority: "HIGH",
         category: "WEATHER",
       };
@@ -92,7 +93,7 @@ export default function AlertsPage() {
         title: "Weather Alert",
         description: `Wind ~ ${Math.round(ws)} m/s • Rain ${rain.toFixed(1)} mm/h • Please ride with caution.`,
         location: addr || "Your area",
-        timestamp: Date.now(),            // ← 不再塞固定字串時間
+        timestamp: Date.now(),
         priority: "MEDIUM",
         category: "WEATHER",
       };
@@ -100,7 +101,7 @@ export default function AlertsPage() {
     return null;
   };
 
-  /** 取 alerts，並更新地址與總數廣播 */
+  /** 實際抓取 alerts（忽略被中止的請求錯誤） */
   const fetchAlerts = useCallback(async (lat: number, lon: number, signal?: AbortSignal) => {
     try {
       const url = new URL(API);
@@ -135,12 +136,31 @@ export default function AlertsPage() {
         localStorage.setItem("cs.alerts.list", JSON.stringify(cleaned));
         window.dispatchEvent(new CustomEvent("cs:alerts:list", { detail: { list: cleaned } }));
       } catch {}
-    } catch (e) {
+    } catch (e: unknown) {
+      // ✅ 在 React 18 + StrictMode 下，第一次 effect 會被立刻清理並中止請求
+      // 這裡對 AbortError 靜默處理，避免誤報錯
+      const isAbort =
+        (e instanceof DOMException && e.name === "AbortError") ||
+        // 某些環境下可能不是 DOMException，但 signal 已被中止
+        (signal && (signal as AbortSignal).aborted);
+
+      if (isAbort) return;
+
       console.error("fetch alerts failed:", e);
       setAddress(`${lat.toFixed(5)}, ${lon.toFixed(5)}`);
       setAlerts([]);
     }
-  }, []);
+  }, []); // 依賴空陣列：API/常量不變
+
+  /** 封裝：開始新請求並中止舊請求（避免重入導致競態/誤報錯） */
+  const startFetch = useCallback((lat: number, lon: number) => {
+    // 中止上一個在途請求（會觸發 AbortError，但我們在 fetchAlerts 內會忽略）
+    controllerRef.current?.abort();
+
+    const ac = new AbortController();
+    controllerRef.current = ac;
+    fetchAlerts(lat, lon, ac.signal);
+  }, [fetchAlerts]);
 
   /** 初始化：讀取現有座標（Home 已經會存），沒有就用 FALLBACK；立刻抓一次 */
   useEffect(() => {
@@ -153,10 +173,13 @@ export default function AlertsPage() {
         }
       }
     } catch {}
-    const ac = new AbortController();
-    fetchAlerts(coordsRef.current.lat, coordsRef.current.lon, ac.signal);
-    return () => ac.abort();
-  }, [fetchAlerts]);
+    startFetch(coordsRef.current.lat, coordsRef.current.lon);
+
+    return () => {
+      // 元件卸載時中止在途請求，避免發生 setState on unmounted
+      controllerRef.current?.abort();
+    };
+  }, [startFetch]);
 
   /** 跟上首頁座標變化（Home 會 dispatch `cs:coords`） */
   useEffect(() => {
@@ -164,20 +187,18 @@ export default function AlertsPage() {
       const d = (e as CustomEvent).detail as { lat?: number; lon?: number } | undefined;
       if (d?.lat != null && d?.lon != null) {
         coordsRef.current = { lat: d.lat, lon: d.lon };
-        const ac = new AbortController();
-        fetchAlerts(d.lat, d.lon, ac.signal);
+        startFetch(d.lat, d.lon);
       }
     };
     window.addEventListener("cs:coords", onCoords);
     return () => window.removeEventListener("cs:coords", onCoords);
-  }, [fetchAlerts]);
+  }, [startFetch]);
 
   /** 前景輪詢：可見時每 60s 刷新；切回分頁或 focus 立即刷新 */
   useEffect(() => {
     const poll = () => {
       if (document.visibilityState !== "visible") return;
-      const ac = new AbortController();
-      fetchAlerts(coordsRef.current.lat, coordsRef.current.lon, ac.signal);
+      startFetch(coordsRef.current.lat, coordsRef.current.lon);
     };
 
     const onVis = () => {
@@ -188,7 +209,7 @@ export default function AlertsPage() {
     document.addEventListener("visibilitychange", onVis);
     window.addEventListener("focus", onFocus);
 
-    pollRef.current = window.setInterval(poll, 60 * 1000);
+    const intervalId = window.setInterval(poll, 60 * 1000);
 
     // 讓相對時間每分鐘自動重算（即使沒有新資料）
     const tickId = window.setInterval(() => setTick(v => v + 1), 60_000);
@@ -196,10 +217,10 @@ export default function AlertsPage() {
     return () => {
       document.removeEventListener("visibilitychange", onVis);
       window.removeEventListener("focus", onFocus);
-      if (pollRef.current) window.clearInterval(pollRef.current);
+      window.clearInterval(intervalId);
       window.clearInterval(tickId);
     };
-  }, [fetchAlerts]);
+  }, [startFetch]);
 
   // Summary 計數
   const { critical, high, medium, low } = useMemo(() => {
@@ -242,7 +263,7 @@ export default function AlertsPage() {
             <AlertItem
               key={idx}
               {...alert}
-              time={timeFromNow(alert.timestamp ?? Date.now())} // ← 動態時間
+              time={timeFromNow(alert.timestamp ?? Date.now())} // 動態時間
             />
           ))}
         </section>
