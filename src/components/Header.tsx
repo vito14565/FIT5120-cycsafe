@@ -14,11 +14,15 @@ export default function Header() {
   const isHome = locationPath === "/";
 
   const [address, setAddress] = useState("");
-  const [alertCount, setAlertCount] = useState(0); // 由 alertsService 寫入/廣播
-  const [bellCount, setBellCount] = useState(0);   // 由 notify.ts 本地提升
+  const [alertCount, setAlertCount] = useState(0); // incidents-only count for the bell
+  const [bellCount, setBellCount] = useState(0);   // local “bell” nudges
   const [openTray, setOpenTray] = useState(false);
   const [alerts, setAlerts] = useState<any[]>([]);
   const [updatedLabel, setUpdatedLabel] = useState("Updated just now");
+
+  // keep only incident alerts for the bell (hide weather)
+  const keepIncidentOnly = (list: any[]) =>
+    (Array.isArray(list) ? list : []).filter(x => x?.incidentType !== "severe_weather");
 
   useEffect(() => {
     // 地址初始化
@@ -34,12 +38,12 @@ export default function Header() {
     };
     window.addEventListener("cs:address", onAddr);
 
-    // alerts 初始化（數量 + 清單）
+    // alerts 初始化（用列表算 incidents-only 數量，不用 total）
     try {
-      const n = parseInt(localStorage.getItem("cs.alerts.total") || "0", 10);
-      setAlertCount(Number.isFinite(n) ? n : 0);
-      const json = JSON.parse(localStorage.getItem("cs.alerts.list") || "[]");
-      setAlerts(Array.isArray(json) ? json : []);
+      const raw = JSON.parse(localStorage.getItem("cs.alerts.list") || "[]");
+      const onlyIncidents = keepIncidentOnly(raw);
+      setAlerts(onlyIncidents);
+      setAlertCount(onlyIncidents.length);
     } catch {}
 
     // bell 初始化
@@ -48,15 +52,21 @@ export default function Header() {
       if (Number.isFinite(bc)) setBellCount(bc);
     } catch {}
 
-    // 監聽 alerts 數量/清單
-    const onAlerts = (e: Event) => {
-      const total = Number((e as CustomEvent<{ total?: number }>).detail?.total ?? 0);
-      setAlertCount(Number.isFinite(total) ? total : 0);
+    // 監聽 alerts 變化：重新從 storage 拿列表→過濾→計數
+    const onAlerts = () => {
+      try {
+        const raw = JSON.parse(localStorage.getItem("cs.alerts.list") || "[]");
+        const onlyIncidents = keepIncidentOnly(raw);
+        setAlerts(onlyIncidents);
+        setAlertCount(onlyIncidents.length);
+      } catch {}
       bumpUpdatedLabel();
     };
     const onList = (e: Event) => {
       const list = (e as CustomEvent<{ list?: any[] }>).detail?.list ?? [];
-      if (Array.isArray(list)) setAlerts(list);
+      const onlyIncidents = keepIncidentOnly(list);
+      setAlerts(onlyIncidents);
+      setAlertCount(onlyIncidents.length);
     };
     window.addEventListener("cs:alerts", onAlerts);
     window.addEventListener("cs:alerts:list", onList);
@@ -72,12 +82,14 @@ export default function Header() {
     const onStorage = (e: StorageEvent) => {
       if (e.key === "cs.address" && e.newValue) setAddress(e.newValue);
       if (e.key === "cs.alerts.list" && e.newValue) {
-        try { setAlerts(JSON.parse(e.newValue) || []); } catch {}
+        try {
+          const raw = JSON.parse(e.newValue) || [];
+          const onlyIncidents = keepIncidentOnly(raw);
+          setAlerts(onlyIncidents);
+          setAlertCount(onlyIncidents.length);
+        } catch {}
       }
-      if (e.key === "cs.alerts.total" && e.newValue) {
-        const n = parseInt(e.newValue, 10);
-        if (Number.isFinite(n)) setAlertCount(n);
-      }
+      // 忽略 cs.alerts.total，因為它包含天氣
       if (e.key === "cs.bellCount" && e.newValue) {
         const n = parseInt(e.newValue, 10);
         if (Number.isFinite(n)) setBellCount(n);
@@ -117,12 +129,12 @@ export default function Header() {
     setUpdatedLabel(`Updated ${m} minute${m > 1 ? "s" : ""} ago`);
   }
 
-  // Header 的「Change」→ 丟事件給 Home.tsx 打開 GeoPrompt
+  // Header 的「Change」
   const onChangeLocation = () => {
     window.dispatchEvent(new CustomEvent("cs:prompt-geo"));
   };
 
-  // 徽章數：取 alerts 總數與 bell 計數的最大值
+  // 徽章數：取「事件（已過濾）數量」與 bell 計數的最大值
   const badge = Math.max(alertCount, bellCount);
 
   return (

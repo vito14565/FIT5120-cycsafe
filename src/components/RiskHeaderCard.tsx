@@ -1,4 +1,5 @@
 // src/components/RiskHeaderCard.tsx
+import { useEffect, useRef } from "react";
 import "./RiskHeaderCard.css";
 
 type RiskText = "Low Risk" | "Medium Risk" | "High Risk";
@@ -12,18 +13,44 @@ interface Props {
   riskText?: RiskText;
 }
 
+/** Spec thresholds:
+ * Low:    < 20
+ * Medium: 20–60
+ * High:   > 60
+ */
 const pctToText = (n: number): RiskText =>
-  n >= 70 ? "High Risk" : n >= 40 ? "Medium Risk" : "Low Risk";
+  n > 60 ? "High Risk" : n >= 20 ? "Medium Risk" : "Low Risk";
 
 export default function RiskHeaderCard({ title, icon, riskLevel = 0, riskText }: Props) {
   const pct = Math.round(Number.isFinite(riskLevel) ? riskLevel : 0);
   const text: RiskText = (riskText as RiskText) || pctToText(pct);
 
-  const riskClass =
-    text === "High Risk" ? "high" : text === "Medium Risk" ? "medium" : "low";
+  const riskClass = text === "High Risk" ? "high" : text === "Medium Risk" ? "medium" : "low";
+  const shakeClass = riskClass === "high" ? "shake-2" : riskClass === "medium" ? "shake-1" : "";
+
+  // Vibrate once for Medium, twice for High — only when the bucket changes
+  const lastBucketRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (lastBucketRef.current !== riskClass) {
+      lastBucketRef.current = riskClass;
+
+      if (typeof navigator !== "undefined" && "vibrate" in navigator) {
+        if (riskClass === "medium") {
+          // single short buzz
+          navigator.vibrate?.(200);
+        } else if (riskClass === "high") {
+          // two short buzzes
+          navigator.vibrate?.([220, 120, 220]);
+        }
+      }
+    }
+  }, [riskClass]);
+
+  /** Remount the header when the bucket changes so the CSS animation runs once */
+  const mountKey = riskClass;
 
   return (
-    <div className={`risk-header ${riskClass}`}>
+    <div key={mountKey} className={`risk-header ${riskClass} ${shakeClass}`}>
       <div className="rh-left">
         {icon && <span className="rh-icon">{icon}</span>}
         <div className="rh-text">
