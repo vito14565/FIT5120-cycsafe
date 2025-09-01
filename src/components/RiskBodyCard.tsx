@@ -5,6 +5,7 @@ import "./RiskBodyCard.css";
 interface RiskBodyCardProps {
   actionText?: string;
   actionLink?: string;
+  details?: string;
   children?: React.ReactNode;
 }
 

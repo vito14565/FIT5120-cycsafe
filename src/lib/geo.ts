@@ -40,3 +40,19 @@ export function haversineMeters(
 
   return 2 * R * Math.asin(Math.min(1, Math.sqrt(h)));
 }
+// Simple reverse geocoder (BigDataCloud); swap to your backend or Nominatim if you prefer.
+export async function reverseGeocode(lat: number, lng: number): Promise<string> {
+  try {
+    const r = await fetch(
+      `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lng}&localityLanguage=en`
+    );
+    const j = await r.json();
+    const city = j.city || j.locality || j.principality || "";
+    const suburb = j.localityInfo?.administrative?.[2]?.name || "";
+    // Prefer city; fall back to comma-joined pieces
+    const label = city || [suburb, j.city].filter(Boolean).join(", ");
+    return label || `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
+  } catch {
+    return `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
+  }
+}
