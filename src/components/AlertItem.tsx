@@ -1,17 +1,33 @@
+// src/components/AlertItem.tsx
 import "./AlertItem.css";
 
-// 匯入 icon
 import weatherIcon from "../assets/weather.svg";
 import trafficIcon from "../assets/traffic.svg";
 import infrastructureIcon from "../assets/infrastructure.svg";
 import warningIcon from "../assets/warning.svg";
 
+export type Priority = "CRITICAL" | "HIGH" | "MEDIUM" | "LOW";
+export type Category = "WEATHER" | "TRAFFIC" | "INFRA" | "SAFETY";
+
 interface AlertItemProps {
   title: string;
   description: string;
   location: string;
-  time: string;
-  priority: "CRITICAL" | "HIGH" | "MEDIUM" | "LOW";
+  time: string;            // "5 minutes ago"
+  priority: Priority;      // controls color/badge
+  category: Category;      // controls icon
+  dismissable?: boolean;   // show ×
+  onDismiss?: () => void;
+}
+
+function iconFor(category: Category) {
+  switch (category) {
+    case "WEATHER": return weatherIcon;
+    case "TRAFFIC": return trafficIcon;
+    case "INFRA":   return infrastructureIcon;
+    case "SAFETY":  return warningIcon;
+    default:        return warningIcon;
+  }
 }
 
 export default function AlertItem({
@@ -20,48 +36,41 @@ export default function AlertItem({
   location,
   time,
   priority,
+  category,
+  dismissable,
+  onDismiss,
 }: AlertItemProps) {
-  // 根據 priority 回傳不同圖標
-  const getIcon = () => {
-    switch (priority) {
-      case "CRITICAL":
-        return weatherIcon;
-      case "HIGH":
-        return trafficIcon;
-      case "MEDIUM":
-        return warningIcon;
-      case "LOW":
-        return infrastructureIcon;
-      default:
-        return warningIcon;
-    }
-  };
+  const p = priority.toLowerCase(); // "critical" | "high" | "medium" | "low"
+  const icon = iconFor(category);
 
   return (
-    <div className={`alert-item ${priority.toLowerCase()}`}>
-      {/* Header 區塊 */}
-      <div className="alert-header">
+    <article className={`alert-item ${p}`}>
+      <header className="alert-header">
         <div className="alert-left">
-          <img
-            src={getIcon()}
-            alt={priority}
-            className={`alert-icon ${priority.toLowerCase()}`}
-          />
+          <img src={icon} alt={category} className={`alert-icon ${p}`} />
           <h3>{title}</h3>
         </div>
-        <span className={`alert-badge ${priority.toLowerCase()}`}>
-          {priority}
-        </span>
-      </div>
+        <div className="alert-right">
+          <span className={`alert-badge ${p}`}>{priority}</span>
+          {dismissable && (
+            <button
+              type="button"
+              aria-label="Dismiss alert"
+              className="alert-close"
+              onClick={onDismiss}
+            >
+              ×
+            </button>
+          )}
+        </div>
+      </header>
 
-      {/* 描述文字 */}
       <p className="alert-description">{description}</p>
 
-      {/* Footer 區塊 */}
-      <div className="alert-footer">
+      <footer className="alert-footer">
         <span>{location}</span>
         <span>{time}</span>
-      </div>
-    </div>
+      </footer>
+    </article>
   );
 }

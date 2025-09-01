@@ -1,24 +1,20 @@
 // src/pages/AlertsPage.tsx
-import { useEffect, useMemo, useRef, useState, useCallback } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import "./AlertsPage.css";
-import AlertItem from "../components/AlertItem";
+import AlertItem, { type Category, type Priority } from "../components/AlertItem";
+import { timeFromNow } from "../lib/time";
 
 import weatherIcon from "../assets/weather.svg";
 import trafficIcon from "../assets/traffic.svg";
 import infrastructureIcon from "../assets/infrastructure.svg";
 import warningIcon from "../assets/warning.svg";
-import bellOutlineIcon from "../assets/bell-outline.svg";
-import { timeFromNow } from "../lib/time";
-
-type Priority = "CRITICAL" | "HIGH" | "MEDIUM" | "LOW";
-type Category = "WEATHER" | "TRAFFIC" | "INFRA" | "SAFETY";
 
 type AlertModel = {
+  id: string;
   title: string;
   description: string;
   location: string;
-  time?: string;
-  timestamp?: number | string;
+  timestamp: number;       // ms
   priority: Priority;
   category: Category;
 };
@@ -28,12 +24,7 @@ type RiskResp = {
   address?: string;
   lat?: number;
   lon?: number;
-  weather?: {
-    windSpeed?: number;      // m/s
-    precipitation?: number;  // mm/h
-    temperature?: number;    // °C
-  };
-  atmosphere?: string;
+  weather?: { windSpeed?: number; precipitation?: number; temperature?: number };
 };
 
 const API =
@@ -44,253 +35,303 @@ const FALLBACK = { lat: -37.8136, lon: 144.9631 }; // Melbourne CBD
 const ADDRESS_KEY = "cs.address";
 const COORDS_KEY  = "cs.coords";
 
-// Open-Meteo：風速 m/s；1 m/s ≈ 3.6 km/h
-const WIND_MED  = 11;   // ≈ 40 km/h
-const WIND_HIGH = 17;   // ≈ 61 km/h
-const RAIN_MED  = 1.0;  // mm/h
-const RAIN_HIGH = 3.0;  // mm/h
+const DEMO_ON   = String(import.meta.env.VITE_DEMO_ALERTS ?? "0") === "1";
+
+// thresholds for building a WEATHER alert from live wx
+const WIND_MED  = Number(import.meta.env.VITE_WIND_MED_MS ?? 10);
+const WIND_HIGH = Number(import.meta.env.VITE_WIND_HIGH_MS ?? 14);
+const RAIN_MM   = Number(import.meta.env.VITE_RAIN_MM ?? 1.0);
+
+/** Priority sort weight (CRITICAL > HIGH > MEDIUM > LOW) */
+const PRI_WEIGHT: Record<Priority, number> = {
+  CRITICAL: 3, HIGH: 2, MEDIUM: 1, LOW: 0,
+};
+
+/** Small skeleton list while loading */
+function SkeletonList() {
+  return (
+    <div className="skeleton-list">
+      <div className="skeleton-card" />
+      <div className="skeleton-card" />
+      <div className="skeleton-card" />
+    </div>
+  );
+}
 
 export default function AlertsPage() {
   const [alerts, setAlerts] = useState<AlertModel[]>([]);
   const [address, setAddress] = useState<string>("");
-  const [, setTick] = useState(0); // 每分鐘觸發重算相對時間
+  const [loading, setLoading] = useState<boolean>(false);
+  const [, setTick] = useState(0);  // re-render every minute for “x minutes ago”
 
-  // 最新座標記在 ref，供輪詢 & 事件回呼使用
   const coordsRef = useRef<{ lat: number; lon: number }>(FALLBACK);
+  const inFlightRef = useRef<AbortController | null>(null);
+  const lastFetchTsRef = useRef(0);
 
-  // 只保留一個在途請求；每次新發請求會中止舊請求（避免重入/重複）
-  const controllerRef = useRef<AbortController | null>(null);
-
-  /** 安全清洗：過濾 undefined/空事件、缺少必要欄位的事件 */
-  const sanitizeIncidents = (list: AlertModel[]) => {
-    return (list || [])
+  const sanitize = (list: AlertModel[]) =>
+    (list || [])
       .filter(Boolean)
-      .filter(x => x.title || x.description)
-      .filter(x => x.timestamp != null);
-  };
+      .filter(a => a.title || a.description)
+      .filter(a => a.timestamp != null);
 
-  /** 根據風/雨組裝一張 Weather Alert（不到門檻回 null） */
+  // ========== 1) WEATHER alert from live API ==========
   const buildWeatherAlert = (data: RiskResp): AlertModel | null => {
-    const ws   = Number(data.weather?.windSpeed ?? 0);       // m/s
-    const rain = Number(data.weather?.precipitation ?? 0);   // mm/h
+    const ws   = Number(data.weather?.windSpeed ?? 0);
+    const rain = Number(data.weather?.precipitation ?? 0);
+    if (ws < WIND_MED && rain < RAIN_MM) return null;
+
     const addr =
       data.address ||
       localStorage.getItem(ADDRESS_KEY) ||
       [data.lat, data.lon].filter(Boolean).join(", ");
 
-    if (ws >= WIND_HIGH || rain >= RAIN_HIGH) {
-      return {
-        title: "Severe Weather Warning",
-        description: `Strong winds (~${Math.round(ws)} m/s) or heavy rain (${rain.toFixed(1)} mm/h). Reduced visibility and hazardous conditions.`,
-        location: addr || "Your area",
-        timestamp: Date.now(),
-        priority: "HIGH",
-        category: "WEATHER",
-      };
-    }
-    if (ws >= WIND_MED || rain >= RAIN_MED) {
-      return {
-        title: "Weather Alert",
-        description: `Wind ~ ${Math.round(ws)} m/s • Rain ${rain.toFixed(1)} mm/h • Please ride with caution.`,
-        location: addr || "Your area",
-        timestamp: Date.now(),
-        priority: "MEDIUM",
-        category: "WEATHER",
-      };
-    }
-    return null;
+    const isHigh = ws >= WIND_HIGH || rain >= RAIN_MM * 3;
+    const priority: Priority = isHigh ? "HIGH" : "MEDIUM";
+    const title = isHigh ? "Severe Weather Warning" : "Weather Advisory";
+    const description = isHigh
+      ? `Strong winds (~${Math.round(ws)} m/s) or heavy rain (${rain.toFixed(1)} mm/h). Reduced visibility & hazardous conditions.`
+      : `Gusty winds (~${Math.round(ws)} m/s) or rain (${rain.toFixed(1)} mm/h). Ride with caution.`;
+
+    return {
+      id: `wx#${Date.now()}`,
+      title,
+      description,
+      location: addr || "Your area",
+      timestamp: Date.now(),
+      priority,
+      category: "WEATHER",
+    };
   };
 
-  /** 實際抓取 alerts（忽略被中止的請求錯誤） */
-  const fetchAlerts = useCallback(async (lat: number, lon: number, signal?: AbortSignal) => {
+  // ========== 2) DEMO alerts (optional) for a full Figma look ==========
+  const buildDemoAlerts = (addr: string): AlertModel[] => {
+    if (!DEMO_ON) return [];
+    const now = Date.now();
+    return [
+      {
+        id: "demo#critical-weather",
+        title: "Severe Weather Warning",
+        description: "Strong winds (40+ km/h) and heavy rain expected between 2–6 PM. Reduced visibility and slippery conditions.",
+        location: addr,
+        timestamp: now - 5 * 60_000,
+        priority: "CRITICAL",
+        category: "WEATHER",
+      },
+      {
+        id: "demo#traffic-major",
+        title: "Major Accident – Route Blocked",
+        description: "Multi-vehicle accident on Swanston Street near Melbourne University. Emergency services on scene.",
+        location: "Swanston St, Carlton",
+        timestamp: now - 12 * 60_000,
+        priority: "HIGH",
+        category: "TRAFFIC",
+      },
+      {
+        id: "demo#infra-works",
+        title: "Road Works Active",
+        description: "Lane closures on Collins Street affecting cycling lanes. Expect delays and exercise extra caution.",
+        location: "Collins St, Melbourne",
+        timestamp: now - 60 * 60_000,
+        priority: "MEDIUM",
+        category: "INFRA",
+      },
+      {
+        id: "demo#holiday",
+        title: "Holiday Period Alert",
+        description: "Increased recreational cycling activity. Higher risk of inexperienced cyclists on popular routes.",
+        location: "Capital City Trail",
+        timestamp: now - 2 * 60 * 60_000,
+        priority: "MEDIUM",
+        category: "SAFETY",
+      },
+      {
+        id: "demo#trail-maint",
+        title: "Bike Path Maintenance",
+        description: "Scheduled maintenance on Yarra Trail between 10 PM – 6 AM. Alternative routes available.",
+        location: "Yarra Trail, Richmond",
+        timestamp: now - 4 * 60 * 60_000,
+        priority: "LOW",
+        category: "INFRA",
+      },
+    ];
+  };
+
+  // ========== 3) Fetch + compose alerts (single in-flight, AbortError-safe) ==========
+  const fetchAlerts = useCallback(async (lat: number, lon: number) => {
+    // throttle visibility-triggered calls
+    const now = Date.now();
+    if (now - lastFetchTsRef.current < 1500) return;
+    lastFetchTsRef.current = now;
+
+    // cancel previous request
+    if (inFlightRef.current) inFlightRef.current.abort();
+    const ac = new AbortController();
+    inFlightRef.current = ac;
+
+    setLoading(prev => prev || alerts.length === 0);
+
     try {
       const url = new URL(API);
       url.searchParams.set("lat", String(lat));
       url.searchParams.set("lon", String(lon));
-      url.searchParams.set("ts", String(Date.now())); // cache-bust
 
-      const res = await fetch(url.toString(), { cache: "no-store", signal });
+      // If we already have an address stored, skip reverse-geocoding on backend
+      const hasAddr = !!localStorage.getItem(ADDRESS_KEY);
+      url.searchParams.set("geocode", hasAddr ? "0" : "1");
+
+      // This page just needs weather context; keep radius small & cheap
+      url.searchParams.set("r", "500");
+
+      const res = await fetch(url.toString(), { cache: "no-store", signal: ac.signal });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data: RiskResp = await res.json();
 
       const addr = data.address || `${lat.toFixed(5)}, ${lon.toFixed(5)}`;
       setAddress(addr);
-      try {
-        localStorage.setItem(ADDRESS_KEY, addr);
-        window.dispatchEvent(new CustomEvent("cs:address", { detail: addr }));
-      } catch {}
 
       const next: AlertModel[] = [];
+
+      // live weather (optional)
       const weatherAlert = data.ok ? buildWeatherAlert(data) : null;
       if (weatherAlert) next.push(weatherAlert);
 
-      const cleaned = sanitizeIncidents(next);
-      setAlerts(cleaned);
+      // demo data (optional)
+      next.push(...buildDemoAlerts(addr));
 
-      // 廣播總數 & 清單（給首頁/鈴鐺同步）
+      // sort by priority desc then time desc
+      const sorted = sanitize(next).sort((a, b) => {
+        const w = PRI_WEIGHT[b.priority] - PRI_WEIGHT[a.priority];
+        return w !== 0 ? w : b.timestamp - a.timestamp;
+      });
+
+      setAlerts(sorted);
+
+      // broadcast for bell badge
       try {
-        const total = cleaned.length;
-        localStorage.setItem("cs.alerts.total", String(total));
-        window.dispatchEvent(new CustomEvent("cs:alerts", { detail: { total } }));
-
-        localStorage.setItem("cs.alerts.list", JSON.stringify(cleaned));
-        window.dispatchEvent(new CustomEvent("cs:alerts:list", { detail: { list: cleaned } }));
+        localStorage.setItem("cs.alerts.total", String(sorted.length));
+        window.dispatchEvent(new CustomEvent("cs:alerts", { detail: { total: sorted.length } }));
       } catch {}
-    } catch (e: unknown) {
-      // ✅ 在 React 18 + StrictMode 下，第一次 effect 會被立刻清理並中止請求
-      // 這裡對 AbortError 靜默處理，避免誤報錯
-      const isAbort =
-        (e instanceof DOMException && e.name === "AbortError") ||
-        // 某些環境下可能不是 DOMException，但 signal 已被中止
-        (signal && (signal as AbortSignal).aborted);
-
-      if (isAbort) return;
-
+    } catch (e: any) {
+      if (e?.name === "AbortError") {
+        // silently ignore aborted fetches
+        return;
+      }
       console.error("fetch alerts failed:", e);
       setAddress(`${lat.toFixed(5)}, ${lon.toFixed(5)}`);
       setAlerts([]);
+      try {
+        localStorage.setItem("cs.alerts.total", "0");
+        window.dispatchEvent(new CustomEvent("cs:alerts", { detail: { total: 0 } }));
+      } catch {}
+    } finally {
+      if (inFlightRef.current === ac) inFlightRef.current = null;
+      setLoading(false);
     }
-  }, []); // 依賴空陣列：API/常量不變
+  }, [alerts.length]);
 
-  /** 封裝：開始新請求並中止舊請求（避免重入導致競態/誤報錯） */
-  const startFetch = useCallback((lat: number, lon: number) => {
-    // 中止上一個在途請求（會觸發 AbortError，但我們在 fetchAlerts 內會忽略）
-    controllerRef.current?.abort();
-
-    const ac = new AbortController();
-    controllerRef.current = ac;
-    fetchAlerts(lat, lon, ac.signal);
-  }, [fetchAlerts]);
-
-  /** 初始化：讀取現有座標（Home 已經會存），沒有就用 FALLBACK；立刻抓一次 */
+  // init coords + first fetch
   useEffect(() => {
     try {
       const saved = localStorage.getItem(COORDS_KEY);
       if (saved) {
         const { lat, lon } = JSON.parse(saved);
-        if (Number.isFinite(lat) && Number.isFinite(lon)) {
-          coordsRef.current = { lat, lon };
-        }
+        if (Number.isFinite(lat) && Number.isFinite(lon)) coordsRef.current = { lat, lon };
       }
     } catch {}
-    startFetch(coordsRef.current.lat, coordsRef.current.lon);
+    fetchAlerts(coordsRef.current.lat, coordsRef.current.lon);
+  }, [fetchAlerts]);
 
-    return () => {
-      // 元件卸載時中止在途請求，避免發生 setState on unmounted
-      controllerRef.current?.abort();
-    };
-  }, [startFetch]);
-
-  /** 跟上首頁座標變化（Home 會 dispatch `cs:coords`） */
+  // react to weather list updates (if any)
   useEffect(() => {
-    const onCoords = (e: Event) => {
-      const d = (e as CustomEvent).detail as { lat?: number; lon?: number } | undefined;
-      if (d?.lat != null && d?.lon != null) {
-        coordsRef.current = { lat: d.lat, lon: d.lon };
-        startFetch(d.lat, d.lon);
+    const onWeatherList = () => fetchAlerts(coordsRef.current.lat, coordsRef.current.lon);
+    window.addEventListener("cs:weather:list", onWeatherList);
+    return () => window.removeEventListener("cs:weather:list", onWeatherList);
+  }, [fetchAlerts]);
+
+  // poll when visible + minute ticker for relative time
+  useEffect(() => {
+    const tickId = window.setInterval(() => setTick(v => v + 1), 60_000);
+    const onVis = () => {
+      if (document.visibilityState === "visible") {
+        fetchAlerts(coordsRef.current.lat, coordsRef.current.lon);
       }
     };
-    window.addEventListener("cs:coords", onCoords);
-    return () => window.removeEventListener("cs:coords", onCoords);
-  }, [startFetch]);
-
-  /** 前景輪詢：可見時每 60s 刷新；切回分頁或 focus 立即刷新 */
-  useEffect(() => {
-    const poll = () => {
-      if (document.visibilityState !== "visible") return;
-      startFetch(coordsRef.current.lat, coordsRef.current.lon);
-    };
-
-    const onVis = () => {
-      if (document.visibilityState === "visible") poll();
-    };
-    const onFocus = () => poll();
-
     document.addEventListener("visibilitychange", onVis);
-    window.addEventListener("focus", onFocus);
+    return () => { window.clearInterval(tickId); document.removeEventListener("visibilitychange", onVis); };
+  }, [fetchAlerts]);
 
-    const intervalId = window.setInterval(poll, 60 * 1000);
+  // Summary counts (Figma: High + Medium emphasized)
+  const { critical, high, medium, low } = useMemo(() => ({
+    critical: alerts.filter(a => a.priority === "CRITICAL").length,
+    high:     alerts.filter(a => a.priority === "HIGH").length,
+    medium:   alerts.filter(a => a.priority === "MEDIUM").length,
+    low:      alerts.filter(a => a.priority === "LOW").length,
+  }), [alerts]);
 
-    // 讓相對時間每分鐘自動重算（即使沒有新資料）
-    const tickId = window.setInterval(() => setTick(v => v + 1), 60_000);
-
-    return () => {
-      document.removeEventListener("visibilitychange", onVis);
-      window.removeEventListener("focus", onFocus);
-      window.clearInterval(intervalId);
-      window.clearInterval(tickId);
-    };
-  }, [startFetch]);
-
-  // Summary 計數
-  const { critical, high, medium, low } = useMemo(() => {
-    return {
-      critical: alerts.filter((a) => a.priority === "CRITICAL").length,
-      high:     alerts.filter((a) => a.priority === "HIGH").length,
-      medium:   alerts.filter((a) => a.priority === "MEDIUM").length,
-      low:      alerts.filter((a) => a.priority === "LOW").length,
-    };
-  }, [alerts]);
-
-  // Category 計數
-  const categoryCounts = useMemo(() => {
-    return {
-      WEATHER: alerts.filter((a) => a.category === "WEATHER").length,
-      TRAFFIC: alerts.filter((a) => a.category === "TRAFFIC").length,
-      INFRA:   alerts.filter((a) => a.category === "INFRA").length,
-      SAFETY:  alerts.filter((a) => a.category === "SAFETY").length,
-    };
-  }, [alerts]);
+  const onDismiss = (id: string) => setAlerts(prev => prev.filter(a => a.id !== id));
 
   return (
     <main className="alerts-page">
+      {/* Summary header like your Figma */}
       <section className="alerts-summary">
         <div className="summary-left">
-          <img src={bellOutlineIcon} alt="Alerts" className="summary-icon" />
-          <h2>Active Alerts ({alerts.length})</h2>
+          <img src={warningIcon} alt="" className="summary-icon" />
+          <h2>Active Alerts <span className="pill">{alerts.length}</span></h2>
         </div>
         <div className="priority-stats">
-          <div className="priority-item critical"><span>{critical}</span>Critical Priority</div>
           <div className="priority-item high"><span>{high}</span>High Priority</div>
           <div className="priority-item medium"><span>{medium}</span>Medium Priority</div>
-          <div className="priority-item low"><span>{low}</span>Low Priority</div>
         </div>
       </section>
 
-      {alerts.length > 0 && (
+      {/* List / Skeleton */}
+      {loading && alerts.length === 0 ? (
+        <SkeletonList />
+      ) : alerts.length > 0 ? (
         <section className="alerts-list">
-          {alerts.map((alert, idx) => (
+          {alerts.map((a) => (
             <AlertItem
-              key={idx}
-              {...alert}
-              time={timeFromNow(alert.timestamp ?? Date.now())} // 動態時間
+              key={a.id}
+              title={a.title}
+              description={a.description}
+              location={a.location}
+              time={timeFromNow(a.timestamp)}
+              priority={a.priority}
+              category={a.category}
+              dismissable
+              onDismiss={() => onDismiss(a.id)}
             />
           ))}
         </section>
+      ) : (
+        <section className="alerts-empty">
+          <p>No active alerts for your area.</p>
+        </section>
       )}
 
+      {/* Category grid */}
       <section className="alerts-categories">
         <h3>Alert Categories</h3>
         <div className="category-list">
           <div className="category-item">
             <span><img src={weatherIcon} alt="Weather" />Weather Alerts</span>
             <small>Conditions affecting cycling safety</small>
-            <em className="cat-count">{categoryCounts.WEATHER}</em>
+            <em className="cat-count">{alerts.filter(a => a.category === "WEATHER").length}</em>
           </div>
           <div className="category-item">
             <span><img src={trafficIcon} alt="Traffic" />Traffic Incidents</span>
             <small>Accidents and road closures</small>
-            <em className="cat-count">{categoryCounts.TRAFFIC}</em>
+            <em className="cat-count">{alerts.filter(a => a.category === "TRAFFIC").length}</em>
           </div>
           <div className="category-item">
             <span><img src={infrastructureIcon} alt="Infrastructure" />Infrastructure</span>
             <small>Road works and maintenance</small>
-            <em className="cat-count">{categoryCounts.INFRA}</em>
+            <em className="cat-count">{alerts.filter(a => a.category === "INFRA").length}</em>
           </div>
           <div className="category-item">
-            <span><img src={warningIcon} alt="Warning" />Safety Warnings</span>
+            <span><img src={warningIcon} alt="Safety" />Safety Warnings</span>
             <small>General safety information</small>
-            <em className="cat-count">{categoryCounts.SAFETY}</em>
+            <em className="cat-count">{alerts.filter(a => a.category === "SAFETY").length}</em>
           </div>
         </div>
       </section>

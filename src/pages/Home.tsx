@@ -1,5 +1,5 @@
 // src/pages/Home.tsx
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { Link } from "react-router-dom";
 import RiskHeaderCard from "../components/RiskHeaderCard";
 import RiskBodyCard from "../components/RiskBodyCard";
@@ -13,6 +13,7 @@ import routeIcon from "../assets/route.svg";
 import insightIcon from "../assets/insight.svg";
 
 type RiskText = "Low Risk" | "Medium Risk" | "High Risk";
+type Weather = { windSpeed?: number; precipitation?: number; temperature?: number };
 type RiskResponse = {
   ok: boolean;
   risk: number;
@@ -20,54 +21,53 @@ type RiskResponse = {
   address?: string;
   lat?: number;
   lon?: number;
-  weather?: { windSpeed?: number; precipitation?: number; temperature?: number };
+  weather?: Weather;
   atmosphere?: string;
+  accidentsNearby?: number; // backend crash count within r meters
 };
 
 const API =
   import.meta.env.VITE_LAMBDA_URL ??
   "https://dbetjhlyj7smwrgcptcozm6amq0ovept.lambda-url.ap-southeast-2.on.aws/";
 
-// ===== 可調整參數 =====
-const PROMPT_INTERVAL_MS = 10 * 60 * 1000; // 10 分鐘
+// ===== Tunables =====
+const PROMPT_INTERVAL_MS = 10 * 60 * 1000; // 10 minutes
 const ADDRESS_KEY = "cs.address";
 const COORDS_KEY = "cs.coords";
 const PROMPTED_ONCE_KEY = "cs.loc.promptedOnce";
 const LAST_PROMPT_TS_KEY = "cs.loc.lastPromptTs";
 
 const FALLBACK = { lat: -37.8136, lon: 144.9631 }; // Melbourne CBD
+const RADIUS_M = 500; // our crash radius
+const SCAN_LIMIT = String(import.meta.env.VITE_CRASH_SCAN_LIMIT ?? "4000"); // keep modest in dev
+const FETCH_DEDUP_MS = 10_000; // don't refetch same rounded location within 10s
 
-// === 小工具：天氣告警寫入/移除（會被 alertsService 合併進托盤）===
+// === Weather alert helpers ===
 type WeatherAlert = {
-  clusterId: string;               // e.g. weather#-37.814_144.963
+  clusterId: string;
   incidentType: "severe_weather";
-  description: string;             // 右側主體文字（不含地址）
+  description: string;
   severity: "low" | "medium" | "high";
-  expiresAt: number;               // epoch seconds
-  ackable: false;                  // 不允許打勾
-  photoUrls?: string[];            // 明確給空陣列，避免載圖
-  // ⭐ 給 AlertTray 的右上角顯示
+  expiresAt: number;
+  ackable: false;
+  photoUrls?: string[];
   address?: string;
   agoText?: string;
 };
-
 function roundCell(lat: number, lon: number, p = 3) {
   const f = 10 ** p;
   const latc = Math.floor(lat * f) / f;
   const lonc = Math.floor(lon * f) / f;
   return `${latc.toFixed(p)}_${lonc.toFixed(p)}`;
 }
-
 function upsertWeatherAlert(a: WeatherAlert) {
   let list: WeatherAlert[] = [];
   try { list = JSON.parse(localStorage.getItem("cs.weather.alerts") || "[]") || []; } catch {}
   const idx = list.findIndex((x) => x.clusterId === a.clusterId);
   if (idx === -1) list.push(a); else list[idx] = a;
   localStorage.setItem("cs.weather.alerts", JSON.stringify(list));
-  // 提醒 alertsService 立刻重抓並合併
   window.dispatchEvent(new CustomEvent("cs:weather:list"));
 }
-
 function removeWeatherAlert(clusterId: string) {
   let list: WeatherAlert[] = [];
   try { list = JSON.parse(localStorage.getItem("cs.weather.alerts") || "[]") || []; } catch {}
@@ -77,16 +77,22 @@ function removeWeatherAlert(clusterId: string) {
 }
 
 export default function Home() {
-  // ===== 顯示用狀態 =====
-  const [riskLevel, setRiskLevel] = useState<number>(0);
+  // ===== Display state =====
+  const [riskLevel, setRiskLevel] = useState<number>(0); // legacy %
   const [riskText, setRiskText] = useState<RiskText>("Low Risk");
   const [address, setAddress] = useState<string>("");
   const [alertCount, setAlertCount] = useState<number>(0);
+  const [crashCount, setCrashCount] = useState<number>(0);
+  const [weather, setWeather] = useState<Weather | null>(null);
+  const [atmosphere, setAtmosphere] = useState<string | undefined>(undefined);
 
-  // 對話框開關
+  // dialog
   const [geoOpen, setGeoOpen] = useState<boolean>(false);
 
-  // ===== 小工具 =====
+  // de-dupe guard
+  const lastFetchKeyRef = useRef<string>("");
+  const lastFetchAtRef = useRef<number>(0);
+
   const markPromptedNow = () => {
     sessionStorage.setItem(PROMPTED_ONCE_KEY, "1");
     sessionStorage.setItem(LAST_PROMPT_TS_KEY, String(Date.now()));
@@ -96,7 +102,7 @@ export default function Home() {
     return Date.now() - last >= PROMPT_INTERVAL_MS;
   };
 
-  // 寫入 localStorage 並廣播
+  // Write to localStorage + broadcast
   const broadcastAddressAndCoords = useCallback((addr: string, lat: number, lon: number) => {
     try {
       localStorage.setItem(ADDRESS_KEY, addr);
@@ -106,21 +112,16 @@ export default function Home() {
     } catch {}
   }, []);
 
-  // 依風險產生/更新本地天氣告警（供鈴鐺顯示）
+  // Reflect risk into weather alert list
   const publishWeatherFromRisk = useCallback(
-    (rt: RiskText, addr: string, lat: number, lon: number, weather?: RiskResponse["weather"]) => {
+    (rt: RiskText, addr: string, lat: number, lon: number, wx?: Weather) => {
       const cell = roundCell(lat, lon, 3);
       const clusterId = `weather#${cell}`;
 
-      // 低風險 → 移除
-      if (rt === "Low Risk") {
-        removeWeatherAlert(clusterId);
-        return;
-      }
+      if (rt === "Low Risk") { removeWeatherAlert(clusterId); return; }
 
-      // 文案（可帶上 API 回來的數字）
-      const wind = weather?.windSpeed != null ? `~${Math.round(Number(weather.windSpeed))} m/s` : undefined;
-      const rain = weather?.precipitation != null ? `${Number(weather.precipitation).toFixed(1)} mm/h` : undefined;
+      const wind = wx?.windSpeed != null ? `~${Math.round(Number(wx.windSpeed))} m/s` : undefined;
+      const rain = wx?.precipitation != null ? `${Number(wx.precipitation).toFixed(1)} mm/h` : undefined;
       const details = [wind && `winds (${wind})`, rain && `rain (${rain})`].filter(Boolean).join(" or ");
 
       const sev: WeatherAlert["severity"] = rt === "High Risk" ? "high" : "medium";
@@ -146,15 +147,28 @@ export default function Home() {
     []
   );
 
-  // 抓風險 + 地址
+  // Raw fetch (no guard)
   const fetchRisk = useCallback(
     async (lat: number, lon: number) => {
       try {
         const url = new URL(API);
         url.searchParams.set("lat", String(lat));
         url.searchParams.set("lon", String(lon));
+        url.searchParams.set("r", String(RADIUS_M));
+        url.searchParams.set("limit", SCAN_LIMIT);
+        url.searchParams.set("r", String(RADIUS_M));
+        url.searchParams.set("limit", String(import.meta.env.VITE_CRASH_SCAN_LIMIT ?? "6000")); // set 6000 in .env
+        url.searchParams.set("geocode", "0"); // skip reverse geocode on every poll
+
         const res = await fetch(url.toString(), { cache: "no-store" });
-        const data: RiskResponse = await res.json();
+        const text = await res.text();
+        if (!res.ok) {
+          throw new Error(`HTTP ${res.status}: ${text.slice(0, 200)}`);
+        }
+
+        let data: RiskResponse;
+        try { data = JSON.parse(text); }
+        catch { throw new Error(`Bad JSON: ${text.slice(0, 200)}`); }
 
         const addr = data.address || `${lat.toFixed(5)}, ${lon.toFixed(5)}`;
         setRiskLevel(Math.round(data.risk || 0));
@@ -162,41 +176,41 @@ export default function Home() {
         setAddress(addr);
         broadcastAddressAndCoords(addr, lat, lon);
 
-        // ⭐ 天氣同步到鈴鐺
+        const crashes = Number(data.accidentsNearby ?? 0);
+        setCrashCount(Number.isFinite(crashes) ? crashes : 0);
+        try { window.dispatchEvent(new CustomEvent("cs:crash", { detail: { count: crashes, radius: RADIUS_M } })); } catch {}
+
+        setWeather(data.weather ?? null);
+        setAtmosphere(data.atmosphere);
+
         publishWeatherFromRisk(data.riskText || "Low Risk", addr, lat, lon, data.weather);
       } catch (e) {
         console.error("fetch risk failed:", e);
         const addr = `${lat.toFixed(5)}, ${lon.toFixed(5)}`;
         setAddress(addr);
         broadcastAddressAndCoords(addr, lat, lon);
+        setCrashCount(0);
+        setWeather(null);
+        setAtmosphere(undefined);
+        try { window.dispatchEvent(new CustomEvent("cs:crash", { detail: { count: 0, radius: RADIUS_M } })); } catch {}
       }
     },
     [broadcastAddressAndCoords, publishWeatherFromRisk]
   );
 
-  // 若已授權，做一次靜默 geolocation（不打開對話框）
-  const trySilentGeolocation = useCallback(async () => {
-    try {
-      const perm: PermissionStatus | undefined = await (navigator as any)?.permissions?.query?.({
-        name: "geolocation" as PermissionName,
-      });
-      if (perm?.state !== "granted") return false;
-      return await new Promise<boolean>((resolve) => {
-        navigator.geolocation.getCurrentPosition(
-          (pos) => {
-            fetchRisk(pos.coords.latitude, pos.coords.longitude);
-            resolve(true);
-          },
-          () => resolve(false),
-          { enableHighAccuracy: true, timeout: 8000, maximumAge: 5000 }
-        );
-      });
-    } catch {
-      return false;
+  // Guarded wrapper to avoid spamming Lambda with same coords repeatedly
+  const fetchRiskGuarded = useCallback(async (lat: number, lon: number) => {
+    const key = `${lat.toFixed(5)},${lon.toFixed(5)}`;
+    const now = Date.now();
+    if (lastFetchKeyRef.current === key && now - lastFetchAtRef.current < FETCH_DEDUP_MS) {
+      return; // skip duplicate fetch
     }
+    lastFetchKeyRef.current = key;
+    lastFetchAtRef.current = now;
+    await fetchRisk(lat, lon);
   }, [fetchRisk]);
 
-  // ===== 首次載入 =====
+  // ===== First load =====
   useEffect(() => {
     try {
       const savedAddr = localStorage.getItem(ADDRESS_KEY);
@@ -207,35 +221,48 @@ export default function Home() {
       const saved = localStorage.getItem(COORDS_KEY);
       if (saved) {
         const { lat, lon } = JSON.parse(saved);
-        if (Number.isFinite(lat) && Number.isFinite(lon)) fetchRisk(lat, lon);
-        else fetchRisk(FALLBACK.lat, FALLBACK.lon);
+        if (Number.isFinite(lat) && Number.isFinite(lon)) fetchRiskGuarded(lat, lon);
+        else fetchRiskGuarded(FALLBACK.lat, FALLBACK.lon);
       } else {
-        fetchRisk(FALLBACK.lat, FALLBACK.lon);
+        fetchRiskGuarded(FALLBACK.lat, FALLBACK.lon);
       }
     } catch {
-      fetchRisk(FALLBACK.lat, FALLBACK.lon);
+      fetchRiskGuarded(FALLBACK.lat, FALLBACK.lon);
     }
 
     (async () => {
-      const updated = await trySilentGeolocation();
-      const promptedOnce = sessionStorage.getItem(PROMPTED_ONCE_KEY) === "1";
-      if (!promptedOnce && !updated) setGeoOpen(true);
+      const perm: PermissionStatus | undefined = await (navigator as any)?.permissions?.query?.({
+        name: "geolocation" as PermissionName,
+      }).catch(() => undefined as any);
+      if (perm?.state === "granted") {
+        navigator.geolocation.getCurrentPosition(
+          (pos) => fetchRiskGuarded(pos.coords.latitude, pos.coords.longitude),
+          () => {},
+          { enableHighAccuracy: true, timeout: 8000, maximumAge: 5000 }
+        );
+      } else {
+        const promptedOnce = sessionStorage.getItem(PROMPTED_ONCE_KEY) === "1";
+        if (!promptedOnce) setGeoOpen(true);
+      }
     })();
-  }, [fetchRisk, trySilentGeolocation]);
+  }, [fetchRiskGuarded]);
 
-  // ===== 接收 Header 的「Change」事件，打開 GeoPrompt =====
+  // Open GeoPrompt from header action
   useEffect(() => {
     const onPrompt = () => setGeoOpen(true);
     window.addEventListener("cs:prompt-geo", onPrompt);
     return () => window.removeEventListener("cs:prompt-geo", onPrompt);
   }, []);
 
-  // ===== 回到分頁才提醒／或靜默更新 =====
+  // Refresh on focus (respect de-dupe)
   useEffect(() => {
     const onVisible = () => {
       if (document.visibilityState === "visible") {
-        if (isDue()) setGeoOpen(true);
-        else trySilentGeolocation();
+        navigator.geolocation.getCurrentPosition(
+          (pos) => fetchRiskGuarded(pos.coords.latitude, pos.coords.longitude),
+          () => {},
+          { enableHighAccuracy: true, timeout: 8000, maximumAge: 5000 }
+        );
       }
     };
     document.addEventListener("visibilitychange", onVisible);
@@ -244,18 +271,9 @@ export default function Home() {
       document.removeEventListener("visibilitychange", onVisible);
       window.removeEventListener("focus", onVisible);
     };
-  }, [trySilentGeolocation]);
+  }, [fetchRiskGuarded]);
 
-  // ===== 每分鐘檢查一次是否到提示間隔 =====
-  useEffect(() => {
-    const id = setInterval(() => {
-      if (document.visibilityState !== "visible") return;
-      if (isDue() && !geoOpen) setGeoOpen(true);
-    }, 60 * 1000);
-    return () => clearInterval(id);
-  }, [geoOpen]);
-
-  // ===== Alerts 總數同步（鈴鐺紅點）=====
+  // Alerts tray badge count
   useEffect(() => {
     const init = parseInt(localStorage.getItem("cs.alerts.total") || "0", 10);
     setAlertCount(Number.isFinite(init) ? init : 0);
@@ -267,35 +285,34 @@ export default function Home() {
     return () => window.removeEventListener("cs:alerts", onAlerts);
   }, []);
 
-  // ===== GeoPrompt 回傳 =====
+  // GeoPrompt returns
   const onGotCoords = (c: Coords) => {
     setGeoOpen(false);
-    markPromptedNow();
-    fetchRisk(c.lat, c.lon);
+    sessionStorage.setItem(PROMPTED_ONCE_KEY, "1");
+    sessionStorage.setItem(LAST_PROMPT_TS_KEY, String(Date.now()));
+    fetchRiskGuarded(c.lat, c.lon);
   };
   const onClosePrompt = () => {
     setGeoOpen(false);
-    markPromptedNow();
+    sessionStorage.setItem(PROMPTED_ONCE_KEY, "1");
+    sessionStorage.setItem(LAST_PROMPT_TS_KEY, String(Date.now()));
   };
 
   return (
     <main className="container has-fab">
       <GeoPrompt open={geoOpen} onGotCoords={onGotCoords} onClose={onClosePrompt} />
 
-      {/* 已移除地址段落，地址只在 Header 顯示 */}
-
-      <section className="alert-card-wrapper">
-        <RiskHeaderCard
-          title="Safety Alerts"
-          icon={<img src={alertIcon} alt="alert" />}
-          riskLevel={riskLevel}
-        />
-        <RiskBodyCard countOverride={alertCount} actionLink="/alerts" actionText="View Details">
-          <Link to="/report" className="btn-outline">
-            Report Incident
-          </Link>
-        </RiskBodyCard>
-      </section>
+<section className="alert-card-wrapper">
+  <RiskHeaderCard
+    title="Safety Alerts"
+    icon={<img src={alertIcon} alt="alert" />}
+    riskLevel={riskLevel}   // big % on the right
+    riskText={riskText}     // “Low/Medium/High Risk”
+  />
+  <RiskBodyCard countOverride={alertCount} actionLink="/alerts" actionText="View Details">
+    <Link to="/report" className="btn-outline">Report Incident</Link>
+  </RiskBodyCard>
+</section>
 
       <FlatCard
         title="Safe Routing"
@@ -321,7 +338,6 @@ export default function Home() {
         ]}
       />
 
-      {/* 右下角小圓 FAB（行動/平板/桌機皆適配） */}
       <ReportFab />
     </main>
   );

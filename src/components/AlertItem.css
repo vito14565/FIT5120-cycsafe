@@ -1,128 +1,98 @@
+/* Card container */
 .alert-item {
-  border-radius: 8px;
-  padding: 1rem;
-  margin-bottom: 1rem;
+  border-radius: 12px;
+  padding: 1rem 1rem 0.8rem;
+  border: 1px solid transparent;
 }
 
-/* ------------------------- */
-/* 🟤 Critical (#8B0000)     */
-/* ------------------------- */
-.alert-item.critical {
-  background: #ffe5e5;         /* 淡紅背景 */
-  border: 1px solid #8b0000;   /* 深紅邊框 */
-}
-.alert-icon.critical {
-  filter: invert(12%) sepia(90%) saturate(4000%) hue-rotate(350deg);
-}
-.alert-badge.critical {
-  background: #8b0000;
-  color: #fff;
-}
+/* Priority colorways (match Figma) */
+.alert-item.critical { background: #fbeaea; border-color: #8b0000; }
+.alert-item.high     { background: #ffecec; border-color: #ef4444; }
+.alert-item.medium   { background: #fff8e1; border-color: #f59e0b; }
+.alert-item.low      { background: #e6f4ea; border-color: #22c55e; }
 
-/* ------------------------- */
-/* 🔴 High (#FF0000)         */
-/* ------------------------- */
-.alert-item.high {
-  background: #ffeaea;         /* 淡粉背景 */
-  border: 1px solid #ff0000;   /* 紅邊框 */
-}
-.alert-icon.high {
-  filter: invert(16%) sepia(99%) saturate(7500%) hue-rotate(0deg);
-}
-.alert-badge.high {
-  background: #ff0000;
-  color: #fff;
-}
-
-/* ------------------------- */
-/* 🟠 Medium (#FFA500)       */
-/* ------------------------- */
-.alert-item.medium {
-  background: #fff8e1;         /* 淡橘背景 */
-  border: 1px solid #ffa500;   /* 橘邊框 */
-}
-.alert-icon.medium {
-  filter: invert(55%) sepia(93%) saturate(5000%) hue-rotate(5deg);
-}
-.alert-badge.medium {
-  background: #ffa500;
-  color: #000; /* 深色字以增加對比 */
-}
-
-/* ------------------------- */
-/* 🟢 Low (#008000)          */
-/* ------------------------- */
-.alert-item.low {
-  background: #e6f7e6;         /* 淡綠背景 */
-  border: 1px solid #008000;   /* 綠邊框 */
-}
-.alert-icon.low {
-  filter: invert(28%) sepia(95%) saturate(3000%) hue-rotate(90deg);
-}
-.alert-badge.low {
-  background: #008000;
-  color: #fff;
-}
-
-/* ------------------------- */
-/* 共用部分                  */
-/* ------------------------- */
 .alert-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 0.8rem;
+  margin-bottom: 0.6rem;
 }
 
 .alert-left {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: .6rem;
 }
+
+.alert-icon { width: 18px; height: 18px; }
+.alert-icon.critical { filter: saturate(1.1); }
+.alert-icon.high     { filter: saturate(1.1); }
 
 .alert-header h3 {
   margin: 0;
   font-size: 1rem;
-  font-weight: bold;
+  font-weight: 800;
 }
 
-.alert-icon {
-  width: 20px;
-  height: 20px;
+.alert-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
+/* Priority badge chip */
 .alert-badge {
   padding: 0.2rem 0.6rem;
   border-radius: 6px;
   font-size: 0.75rem;
-  font-weight: bold;
+  font-weight: 800;
+  letter-spacing: .02em;
   text-transform: uppercase;
+  background: #000;
+  color: #fff;
 }
+.alert-badge.critical { background: #8b0000; }
+.alert-badge.high     { background: #ef4444; }
+.alert-badge.medium   { background: #f59e0b; color: #000; }
+.alert-badge.low      { background: #2563eb; }
 
+/* Body */
 .alert-description {
-  margin: 0.5rem 0;
+  margin: 0.4rem 0 0.6rem;
   color: #444;
-  font-size: 0.9rem;
-  line-height: 1.4;
+  font-size: 0.92rem;
+  line-height: 1.45;
 }
 
+/* Footer */
 .alert-footer {
   display: flex;
   justify-content: space-between;
   font-size: 0.8rem;
-  margin-top: 0.5rem;
-  color: #555;
+  margin-top: 0.2rem;
+  color: #666;
 }
 
-/* =============== 小螢幕補強 (≤480px) =============== */
-@media (max-width: 480px) {
-  .alert-item {
-    padding: 0.75rem;
-  }
-  .alert-header h3 {
-    font-size: 0.9rem;
-  }
-  .alert-description {
-    font-size: 0.85rem;
+/* Dismiss (×) */
+.alert-close {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  font-size: 18px;
+  line-height: 1;
+  padding: 2px 6px;
+  color: #7c7c7c;
+  border-radius: 6px;
+  cursor: pointer;
+}
+.alert-close:hover { background: rgba(0,0,0,.06); }
+.alert-close:focus { outline: 2px solid #2563eb33; outline-offset: 2px; }
+
+/* RWD */
+@media (max-width: 600px) {
+  .alert-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.4rem;
   }
 }

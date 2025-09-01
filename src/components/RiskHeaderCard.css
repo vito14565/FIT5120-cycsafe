@@ -1,64 +1,53 @@
-/* 整張卡的上半部（薄、滿寬、無外距） */
+/* src/components/RiskHeaderCard.css */
 .risk-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 12px 16px; /* 薄一點 */
+  padding: 16px 20px;
   color: #fff;
+  border-top-left-radius: 14px;
+  border-top-right-radius: 14px;
 }
 
-/* 動態顏色背景 */
+/* Figma-style gradients */
 .risk-header.low {
-  background: linear-gradient(90deg, #22c55e, #16a34a);
+  background: linear-gradient(90deg, #f2c94c 0%, #f2994a 50%, #eb5757 100%);
 }
 .risk-header.medium {
-  background: linear-gradient(90deg, #facc15, #f97316);
+  background: linear-gradient(90deg, #f2c94c 0%, #f2994a 55%, #eb5757 100%);
 }
 .risk-header.high {
-  background: linear-gradient(90deg, #ef4444, #b91c1c);
+  background: linear-gradient(90deg, #f2994a 0%, #eb5757 60%, #b91c1c 100%);
 }
 
-/* 左側：icon + 兩行字 */
-.rh-left {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-.rh-icon {
-  display: inline-flex;
-  width: 18px;
-  height: 18px;
-}
-.rh-icon img,
-.rh-icon svg {
-  width: 18px;
-  height: 18px;
-}
+/* Left block */
+.rh-left { display: flex; align-items: center; gap: 12px; }
+.rh-icon { width: 22px; height: 22px; display: inline-flex; }
+.rh-icon img, .rh-icon svg { width: 22px; height: 22px; }
 
 .rh-text h3 {
   margin: 0;
-  font-size: 14px; /* 小字級 */
+  font-size: 18px;
+  font-weight: 800;
   line-height: 1.1;
-  font-weight: 600;
 }
 .rh-text p {
-  margin: 2px 0 0 0;
-  font-size: 12px;
-  opacity: 0.9;
+  margin: 2px 0 0;
+  font-size: 13px;
+  opacity: 0.95;
 }
 
-/* 右側：只顯示等級膠囊 */
-.rh-right {
-  text-align: right;
+/* Right block (big % + label) */
+.rh-right { text-align: right; }
+.rh-percent {
+  font-size: 36px;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: -0.5px;
 }
-.rh-tag {
-  display: inline-block;
-  padding: 4px 10px;
-  border-radius: 999px; /* 膠囊 */
-  font-size: 11px;
+.rh-sub {
+  margin-top: 4px;
+  font-size: 13px;
   font-weight: 700;
-  line-height: 1.2;
-  background: rgba(255, 255, 255, 0.15);
-  backdrop-filter: blur(2px);
-  text-transform: uppercase;
+  opacity: 0.95;
 }
