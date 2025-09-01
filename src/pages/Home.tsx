@@ -7,6 +7,7 @@ import QuickReportModal from "../components/QuickReportModal";
 import "../components/AlertCardWrapper.css";
 import FlatCard from "../components/FlatCard";
 import GeoPrompt, { type Coords } from "../components/GeoPrompt";
+import { submitQuickReport } from "./ReportIncident"; // Import the quick report function
 
 import alertIcon from "../assets/alert.svg";
 import routeIcon from "../assets/route.svg";
@@ -249,7 +250,7 @@ export default function Home() {
     location: { lat: number; lon: number; address: string }
   ) => {
     try {
-      console.log("📝 Submitting incident report:", {
+      console.log("📝 Submitting quick report to IncidentReporting table:", {
         incident_type: incidentType,
         latitude: location.lat,
         longitude: location.lon,
@@ -257,33 +258,14 @@ export default function Home() {
         timestamp: new Date().toISOString()
       });
 
-      // Here you would integrate with your backend API to submit to incident reporting table
-      // Example API call:
-      /*
-      const response = await fetch('/api/incidents', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          incident_type: incidentType,
-          latitude: location.lat,
-          longitude: location.lon,
-          address: location.address,
-          timestamp: new Date().toISOString(),
-        }),
-      });
+      // Submit to IncidentReporting table using existing API
+      await submitQuickReport(incidentType, location);
       
-      if (!response.ok) {
-        throw new Error('Failed to submit incident report');
-      }
-      */
-
-      // For now, just log and show success
-      console.log("✅ Incident report submitted successfully");
+      console.log("✅ Quick report submitted successfully to database");
       
     } catch (error) {
-      console.error("❌ Failed to submit incident report:", error);
+      console.error("❌ Failed to submit quick report to database:", error);
+      throw error; // Re-throw so the QuickReportModal can handle the error
     }
   };
 

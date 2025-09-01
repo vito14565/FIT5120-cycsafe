@@ -30,11 +30,18 @@ export default function QuickReportModal({ isOpen, onClose, onSubmit }: QuickRep
     address: string;
   } | null>(null);
   const [isLoadingLocation, setIsLoadingLocation] = useState(false);
+  const [selectedIncident, setSelectedIncident] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showConfirmation, setShowConfirmation] = useState(false);
 
-  // Get user's current location when modal opens
+  // Reset state when modal opens/closes
   useEffect(() => {
-    if (isOpen && !currentLocation) {
-      getCurrentLocation();
+    if (isOpen) {
+      setSelectedIncident(null);
+      setShowConfirmation(false);
+      if (!currentLocation) {
+        getCurrentLocation();
+      }
     }
   }, [isOpen]);
 
@@ -88,14 +95,56 @@ export default function QuickReportModal({ isOpen, onClose, onSubmit }: QuickRep
     }
   };
 
-  const handleIncidentSelect = (incidentType: string) => {
-    if (currentLocation) {
-      onSubmit(incidentType, currentLocation);
-      onClose();
+  const handleIncidentSelect = (incidentId: string) => {
+    setSelectedIncident(incidentId);
+  };
+
+  const handleSubmit = async () => {
+    if (!selectedIncident || !currentLocation) return;
+
+    setIsSubmitting(true);
+    try {
+      // Submit to backend API
+      await onSubmit(selectedIncident, currentLocation);
+      
+      // Show confirmation popup
+      setShowConfirmation(true);
+      
+      // Hide confirmation after 2 seconds and close modal
+      setTimeout(() => {
+        setShowConfirmation(false);
+        onClose();
+      }, 2000);
+      
+    } catch (error) {
+      console.error('Failed to submit report:', error);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
+  const handleClose = () => {
+    setSelectedIncident(null);
+    setShowConfirmation(false);
+    onClose();
+  };
+
   if (!isOpen) return null;
+
+  // Confirmation popup
+  if (showConfirmation) {
+    return (
+      <div className="quick-report-overlay">
+        <div className="qr-confirmation-popup">
+          <div className="qr-confirmation-icon">✅</div>
+          <h3>Thank you!</h3>
+          <p>Your response has been submitted</p>
+        </div>
+      </div>
+    );
+  }
+
+  const selectedIncidentType = incidentTypes.find(type => type.id === selectedIncident);
 
   return (
     <div className="quick-report-overlay">
@@ -105,10 +154,10 @@ export default function QuickReportModal({ isOpen, onClose, onSubmit }: QuickRep
             <div className="qr-icon">⚡</div>
             <div className="qr-title-section">
               <h3>Quick Report</h3>
-              <p>Tap incident type to report</p>
+              <p>Select incident type and submit</p>
             </div>
           </div>
-          <button className="qr-close-btn" onClick={onClose}>
+          <button className="qr-close-btn" onClick={handleClose}>
             ✕
           </button>
         </div>
@@ -128,15 +177,36 @@ export default function QuickReportModal({ isOpen, onClose, onSubmit }: QuickRep
           {incidentTypes.map((incident) => (
             <button
               key={incident.id}
-              className="qr-incident-btn"
+              className={`qr-incident-btn ${selectedIncident === incident.id ? 'selected' : ''}`}
               onClick={() => handleIncidentSelect(incident.id)}
               disabled={!currentLocation || isLoadingLocation}
             >
               <span className="qr-incident-icon">{incident.icon}</span>
               <span className="qr-incident-name">{incident.name}</span>
+              {selectedIncident === incident.id && (
+                <span className="qr-selected-check">✓</span>
+              )}
             </button>
           ))}
         </div>
+
+        {selectedIncident && (
+          <div className="qr-submit-section">
+            <div className="qr-selected-summary">
+              <span className="qr-summary-label">Selected:</span>
+              <span className="qr-summary-incident">
+                {selectedIncidentType?.icon} {selectedIncidentType?.name}
+              </span>
+            </div>
+            <button 
+              className="qr-submit-btn"
+              onClick={handleSubmit}
+              disabled={isSubmitting}
+            >
+              {isSubmitting ? 'Submitting...' : 'Submit Report'}
+            </button>
+          </div>
+        )}
 
         <div className="qr-footer-note">
           <p>

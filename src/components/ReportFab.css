@@ -1,0 +1,65 @@
+/* 容器：定位在右下角，含按鈕與小提示 */
+.report-fab-wrap {
+  position: fixed;
+  right: max(16px, env(safe-area-inset-right, 16px));
+  bottom: max(16px, env(safe-area-inset-bottom, 16px));
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* 小圓形 FAB（icon-only） */
+.report-fab-mini {
+  width: 56px;
+  height: 56px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(180deg, #3b82f6, #1d4ed8); /* 藍色像你截圖 */
+  color: #fff;
+  box-shadow: 0 12px 24px rgba(0,0,0,.28);
+  text-decoration: none;
+  -webkit-tap-highlight-color: transparent;
+}
+.report-fab-mini img { width: 22px; height: 22px; }
+
+/* 桌面放大一點、離邊遠一點 */
+@media (min-width: 1024px) {
+  .report-fab-mini { width: 64px; height: 64px; }
+  .report-fab-wrap { right: 24px; bottom: 24px; }
+}
+
+/* 互動狀態 */
+@media (prefers-reduced-motion: no-preference) {
+  .report-fab-mini { transition: transform .12s ease, box-shadow .12s ease; }
+  .report-fab-mini:hover { transform: translateY(-1px); box-shadow: 0 14px 28px rgba(0,0,0,.32); }
+}
+.report-fab-mini:active { transform: translateY(1px); }
+.report-fab-mini:focus-visible {
+  outline: 3px solid rgba(255,255,255,.95);
+  outline-offset: 3px;
+}
+
+/* 文字提示（hover/聚焦才顯示） */
+.report-fab-tooltip {
+  pointer-events: none;
+  opacity: 0;
+  transform: translateX(4px);
+  background: rgba(17,24,39,.9);
+  color: #fff;
+  font-size: 12px;
+  padding: 6px 8px;
+  border-radius: 6px;
+  white-space: nowrap;
+}
+.report-fab-wrap:hover .report-fab-tooltip,
+.report-fab-mini:focus-visible + .report-fab-tooltip {
+  opacity: 1;
+}
+
+/* 深色系統陰影稍重 */
+@media (prefers-color-scheme: dark) {
+  .report-fab-mini { box-shadow: 0 12px 28px rgba(0,0,0,.45); }
+}

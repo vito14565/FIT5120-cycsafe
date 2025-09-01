@@ -40,6 +40,53 @@ import CameraCaptureDialog from "../components/CameraCaptureDialog";
 import { createIncident, getUploadUrl } from "../lib/api";
 import type { CreateIncidentPayload } from "../lib/api";
 
+/* ====== Quick Report Helper Function ====== */
+export async function submitQuickReport(
+  incidentType: string, 
+  location: { lat: number; lon: number; address: string }
+): Promise<void> {
+  // Map incident types to severity levels for quick reports
+  const getSeverityFromType = (type: string): SeverityCode => {
+    switch (type) {
+      case 'collision':
+        return 'critical';
+      case 'aggressive_driver':
+        return 'high';
+      case 'near_miss':
+        return 'medium';
+      case 'road_hazard':
+        return 'medium';
+      case 'poor_infrastructure':
+        return 'low';
+      case 'other':
+      default:
+        return 'medium';
+    }
+  };
+
+  // Create payload with minimal required data
+  const payload: CreateIncidentPayload = {
+    Timestamp: new Date().toISOString(),
+    Incident_severity: getSeverityFromType(incidentType),
+    Incident_description: `Quick report: ${incidentTypes[incidentType as keyof typeof incidentTypes] || incidentType}`,
+    Latitude: location.lat,
+    Longitude: location.lon,
+    LGA: "", // Empty for quick reports
+    Verification: "pending",
+    Picture: [], // No photos for quick reports
+    Incident_type: incidentType,
+    Incident_type_desc: incidentTypes[incidentType as keyof typeof incidentTypes] || "Other",
+  };
+
+  try {
+    await createIncident(payload);
+    console.log("✅ Quick report saved to IncidentReporting table");
+  } catch (error) {
+    console.error("❌ Failed to save quick report:", error);
+    throw error; // Re-throw so the UI can handle the error
+  }
+}
+
 /* ====== 事故類型定義 ====== */
 const incidentTypes = {
   "near-miss": "Near Miss",
