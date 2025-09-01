@@ -1,4 +1,3 @@
-// src/pages/Home.tsx
 import { useEffect, useState, useCallback, useRef } from "react";
 import { Link } from "react-router-dom";
 import RiskHeaderCard from "../components/RiskHeaderCard";
@@ -86,7 +85,7 @@ export default function Home() {
   const [riskLevel, setRiskLevel] = useState<number>(0); // legacy %
   const [riskText, setRiskText] = useState<RiskText>("Low Risk");
   const [address, setAddress] = useState<string>("");
-  const [alertCount, setAlertCount] = useState<number>(0);
+  const [alertCount, setAlertCount] = useState<number>(0); // ← derive from cs.alerts.list
   const [crashCount, setCrashCount] = useState<number>(0);
   const [weather, setWeather] = useState<Weather | null>(null);
   const [atmosphere, setAtmosphere] = useState<string | undefined>(undefined);
@@ -172,8 +171,6 @@ export default function Home() {
         url.searchParams.set("lon", String(lon));
         url.searchParams.set("r", String(RADIUS_M));
         url.searchParams.set("limit", String(import.meta.env.VITE_CRASH_SCAN_LIMIT ?? "6000")); // set 6000 in .env
-
-        // ✅ only trigger reverse geocode when needed
         url.searchParams.set("geocode", geocodeNow ? "1" : "0");
 
         const res = await fetch(url.toString(), { cache: "no-store" });
@@ -201,7 +198,6 @@ export default function Home() {
 
         publishWeatherFromRisk(data.riskText || "Low Risk", addr, lat, lon, data.weather);
 
-        // Remember the cell we geocoded so we don't do it again immediately
         if (geocodeNow && data.address) {
           try {
             const cell = roundCell(lat, lon, 3);
@@ -230,7 +226,6 @@ export default function Home() {
 
       const geocodeNow = forceGeocode || shouldGeocode(lat, lon);
 
-      // If not geocoding, respect de-dupe
       if (!geocodeNow) {
         if (lastFetchKeyRef.current === key && now - lastFetchAtRef.current < FETCH_DEDUP_MS) {
           return; // skip duplicate fetch
@@ -308,16 +303,40 @@ export default function Home() {
     };
   }, [fetchRiskGuarded]);
 
-  // Alerts tray badge count
+  // ===== Active alerts count (derive from list, stays fresh) =====
   useEffect(() => {
-    const init = parseInt(localStorage.getItem("cs.alerts.total") || "0", 10);
-    setAlertCount(Number.isFinite(init) ? init : 0);
-    const onAlerts = (e: Event) => {
-      const total = Number((e as CustomEvent).detail?.total ?? 0);
-      setAlertCount(Number.isFinite(total) ? total : 0);
+    const recompute = () => {
+      try {
+        const raw = JSON.parse(localStorage.getItem("cs.alerts.list") || "[]");
+        // If you want *incidents only*, uncomment the next line:
+        // const onlyIncidents = (Array.isArray(raw) ? raw : []).filter((x: any) => x?.incidentType !== "severe_weather");
+        // setAlertCount(onlyIncidents.length);
+        setAlertCount(Array.isArray(raw) ? raw.length : 0); // all alerts (weather + incidents)
+      } catch {
+        setAlertCount(0);
+      }
     };
+
+    // initial compute
+    recompute();
+
+    // listen to service broadcasts
+    const onAlerts = () => recompute();
+    const onList = () => recompute();
     window.addEventListener("cs:alerts", onAlerts);
-    return () => window.removeEventListener("cs:alerts", onAlerts);
+    window.addEventListener("cs:alerts:list", onList);
+
+    // cross-tab/localStorage sync
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === "cs.alerts.list") recompute();
+    };
+    window.addEventListener("storage", onStorage);
+
+    return () => {
+      window.removeEventListener("cs:alerts", onAlerts);
+      window.removeEventListener("cs:alerts:list", onList);
+      window.removeEventListener("storage", onStorage);
+    };
   }, []);
 
   // GeoPrompt returns

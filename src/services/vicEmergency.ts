@@ -299,7 +299,7 @@ async function fetchJson(url: string, signal?: AbortSignal) {
 export async function fetchVicAlertsNearby(
   lat: number,
   lon: number,
-  maxMeters = (Number(import.meta.env.VITE_VIC_RADIUS_KM ?? 25) * 1000),
+  maxMeters = (Number(import.meta.env.VITE_VIC_RADIUS_KM ?? 5) * 1000),
   signal?: AbortSignal,
 ): Promise<AlertModel[]> {
   // serve warm cache fast
