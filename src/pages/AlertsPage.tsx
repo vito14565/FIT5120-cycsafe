@@ -14,16 +14,16 @@ import bellOutlineIcon from "../assets/bell-outline.svg";
 
 import {
   fetchVicAlertsNearby,
-  type AlertModel as VicAlert, // (kept if you use this elsewhere)
+  type AlertModel as VicAlert,
 } from "../services/vicEmergency";
 
-// ---------------- Types ----------------
+/* ---------------- Types ---------------- */
 type WeatherResp = {
   current: {
     weather_code: number;
     rain: number;
-    wind_speed_10m: number; // m/s
-    wind_gusts_10m: number; // m/s
+    wind_speed_10m: number;  // m/s
+    wind_gusts_10m: number;  // m/s
     snowfall: number;
     showers: number;
   };
@@ -44,17 +44,17 @@ export type AlertModel = {
   };
 };
 
-// -------------- Config / env --------------
+/* -------------- Config / env -------------- */
 const FALLBACK = { lat: -37.8136, lon: 144.9631 }; // Melbourne CBD
 const COORDS_KEY = "cs.coords";
 const ADDRESS_KEY = "cs.address";
 
-const WIND_HIGH = 50; // km/h for severe conditions
-const WIND_MED = 25; // km/h for advisory conditions
-const RAIN_HIGH = 2.0; // mm for severe conditions
-const RAIN_MED = 0.5; // mm for advisory conditions
+const WIND_HIGH = 50; // km/h
+const WIND_MED  = 25; // km/h
+const RAIN_HIGH = 2.0; // mm
+const RAIN_MED  = 0.5; // mm
 
-// ---------------- Helpers ----------------
+/* ---------------- Helpers ---------------- */
 const PRI_WEIGHT: Record<Priority, number> = {
   CRITICAL: 3,
   HIGH: 2,
@@ -69,9 +69,8 @@ function uniqById<T extends { id: string }>(arr: T[]) {
 }
 
 function getWeatherCondition(code: number): string {
-  // WMO Weather interpretation codes (simplified)
   if (code === 0) return "Clear sky";
-  if (code <= 3) return "Partly cloudy";
+  if (code <= 3)  return "Partly cloudy";
   if (code <= 48) return "Fog";
   if (code <= 67) return "Rain";
   if (code <= 77) return "Snow";
@@ -81,16 +80,14 @@ function getWeatherCondition(code: number): string {
   return "Unknown";
 }
 
-// Build a weather alert from the Open-Meteo response
+// Build a weather alert card
 function buildWeatherAlert(weather: WeatherResp, address: string): AlertModel | null {
   const { wind_speed_10m: windMs, rain, wind_gusts_10m: gusts, weather_code } = weather.current;
+  const windKmh  = windMs  * 3.6;
+  const gustsKmh = gusts   * 3.6;
 
-  // Convert m/s → km/h
-  const windKmh = windMs * 3.6;
-  const gustsKmh = gusts * 3.6;
-
-  const isSevere = windKmh >= WIND_HIGH || rain >= RAIN_HIGH || gustsKmh >= WIND_HIGH * 1.5;
-  const isAdvisory = windKmh >= WIND_MED || rain >= RAIN_MED || gustsKmh >= WIND_MED * 1.5;
+  const isSevere   = windKmh >= WIND_HIGH || rain >= RAIN_HIGH || gustsKmh >= WIND_HIGH * 1.5;
+  const isAdvisory = windKmh >= WIND_MED  || rain >= RAIN_MED  || gustsKmh >= WIND_MED  * 1.5;
 
   const condition = getWeatherCondition(weather_code);
 
@@ -130,37 +127,37 @@ function buildWeatherAlert(weather: WeatherResp, address: string): AlertModel | 
   };
 }
 
-async function fetchWeatherData(
-  lat: number,
-  lon: number,
-  signal?: AbortSignal
-): Promise<WeatherResp | null> {
+async function fetchWeatherData(lat: number, lon: number, signal?: AbortSignal): Promise<WeatherResp | null> {
   try {
-    // Using Vite dev server proxy to avoid CORS
-    const url = `/api/weather/v1/forecast?latitude=${lat}&longitude=${lon}&current=weather_code,rain,wind_speed_10m,wind_gusts_10m,snowfall,showers&timezone=Australia%2FSydney`;
-    const response = await fetch(url, { signal, headers: { Accept: "application/json" } });
-    if (!response.ok) throw new Error(`Weather API error: ${response.status}`);
-    return await response.json();
-  } catch (error: any) {
-    console.error("❌ Weather fetch failed:", error?.message || error);
+    // Use Open-Meteo directly (CORS allows *)
+    const url =
+      `https://api.open-meteo.com/v1/forecast` +
+      `?latitude=${lat}&longitude=${lon}` +
+      `&current=weather_code,rain,wind_speed_10m,wind_gusts_10m,snowfall,showers` +
+      `&timezone=Australia%2FSydney`;
+    const res = await fetch(url, { signal, headers: { Accept: "application/json" } });
+    if (!res.ok) throw new Error(`Weather API error: ${res.status}`);
+    return await res.json();
+  } catch (err: any) {
+    console.error("❌ Weather fetch failed:", err?.message || err);
     return null;
   }
 }
 
-// Simple reverse-geocode (BigDataCloud)
+// simple reverse geocode for display
 async function reverseGeocode(lat: number, lon: number): Promise<string> {
   try {
-    const response = await fetch(
+    const res = await fetch(
       `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lon}&localityLanguage=en`
     );
-    const data = await response.json();
+    const data = await res.json();
     return data.city || data.locality || data.principality || `${lat.toFixed(4)}, ${lon.toFixed(4)}`;
   } catch {
     return `${lat.toFixed(4)}, ${lon.toFixed(4)}`;
   }
 }
 
-// ---------------- Component ----------------
+/* ---------------- Component ---------------- */
 export default function AlertsPage() {
   const [alerts, setAlerts] = useState<AlertModel[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
@@ -175,11 +172,11 @@ export default function AlertsPage() {
       pushNotifications: true,
     });
 
-  const coordsRef = useRef<{ lat: number; lon: number }>(FALLBACK);
-  const inFlightRef = useRef<AbortController | null>(null);
+  const coordsRef    = useRef<{ lat: number; lon: number }>(FALLBACK);
+  const inFlightRef  = useRef<AbortController | null>(null);
   const lastFetchRef = useRef(0);
 
-  // Fetch & compose list (real data only)
+  // Fetch & compose list
   const fetchAll = useCallback(async (lat: number, lon: number) => {
     const now = Date.now();
     if (now - lastFetchRef.current < 2000) return; // debounce
@@ -193,22 +190,15 @@ export default function AlertsPage() {
     try {
       const addressPromise = reverseGeocode(lat, lon);
 
-      let weather: WeatherResp | null = null;
-      try {
-        weather = await fetchWeatherData(lat, lon, ac.signal);
-      } catch (e) {
-        console.warn("Weather API failed:", e);
-      }
-
-      let vicAlerts: AlertModel[] = [];
-      try {
-        vicAlerts = (await fetchVicAlertsNearby(lat, lon, undefined, ac.signal)) as AlertModel[];
-      } catch (e) {
-        console.warn("VIC Emergency API failed:", e);
-      }
+      const [weather, vicAlerts] = await Promise.all([
+        fetchWeatherData(lat, lon, ac.signal).catch(() => null),
+        // vic service already filters to 5km
+        fetchVicAlertsNearby(lat, lon, undefined, ac.signal).catch(() => []),
+      ]);
 
       const address = await addressPromise;
 
+      // persist last nice address (optional)
       try {
         if (address && !address.includes(",")) {
           localStorage.setItem(ADDRESS_KEY, address);
@@ -218,9 +208,11 @@ export default function AlertsPage() {
       const list: AlertModel[] = [];
       if (weather) {
         const weatherAlert = buildWeatherAlert(weather, address);
-        if (weatherAlert) list.push(weatherAlert);
+        if (weatherAlert) list.push(weatherAlert); // show on top
       }
-      if (vicAlerts.length > 0) list.push(...vicAlerts);
+      if (vicAlerts && vicAlerts.length > 0) {
+        list.push(...vicAlerts);
+      }
 
       const sorted = uniqById(list).sort((a, b) => {
         const w = PRI_WEIGHT[b.priority] - PRI_WEIGHT[a.priority];
@@ -272,47 +264,45 @@ export default function AlertsPage() {
   }, [fetchAll]);
 
   // Figma header stats
-  const { critical, high, medium, low } = useMemo(
+  const { critical, high, medium } = useMemo(
     () => ({
       critical: alerts.filter((a) => a.priority === "CRITICAL").length,
-      high: alerts.filter((a) => a.priority === "HIGH").length,
-      medium: alerts.filter((a) => a.priority === "MEDIUM").length,
-      low: alerts.filter((a) => a.priority === "LOW").length,
+      high:     alerts.filter((a) => a.priority === "HIGH").length,
+      medium:   alerts.filter((a) => a.priority === "MEDIUM").length,
     }),
     [alerts]
   );
 
-  // Category counts for the bottom section
+  // Category counts
   const categories = useMemo(() => {
     type CatItem = { key: Category; name: string; desc: string; count: number };
-    const counts = alerts.reduce((acc, alert) => {
-      acc[alert.category] = (acc[alert.category] || 0) + 1;
+    const counts = alerts.reduce((acc, a) => {
+      acc[a.category] = (acc[a.category] || 0) + 1;
       return acc;
     }, {} as Partial<Record<Category, number>>);
 
     const val = (k: Category) => counts[k] ?? 0;
 
     return [
-      { key: "WEATHER" as Category, name: "Weather Alerts", desc: "Conditions affecting cycling safety", count: val("WEATHER") },
-      { key: "TRAFFIC" as Category, name: "Traffic Incidents", desc: "Accidents and road closures", count: val("TRAFFIC") },
-      { key: "INFRA" as Category,   name: "Infrastructure",   desc: "Road works and maintenance",  count: val("INFRA") },
-      { key: "SAFETY" as Category,  name: "Safety Warnings",  desc: "General safety information",  count: val("SAFETY") },
+      { key: "WEATHER" as Category, name: "Weather Alerts",    desc: "Conditions affecting cycling safety", count: val("WEATHER") },
+      { key: "TRAFFIC" as Category, name: "Traffic Incidents", desc: "Accidents and road closures",        count: val("TRAFFIC") },
+      { key: "INFRA"   as Category, name: "Infrastructure",    desc: "Road works and maintenance",         count: val("INFRA") },
+      { key: "SAFETY"  as Category, name: "Safety Warnings",   desc: "General safety information",         count: val("SAFETY") },
     ] as CatItem[];
   }, [alerts]);
 
-  // Filter alerts based on notification settings
+  // Filter based on notification settings
   const filteredAlerts = useMemo(() => {
     return alerts.filter((alert) => {
       const categoryEnabled =
         {
           WEATHER: notificationSettings.enableWeather,
           TRAFFIC: notificationSettings.enableTraffic,
-          INFRA: notificationSettings.enableInfra,
-          SAFETY: notificationSettings.enableSafety,
+          INFRA:   notificationSettings.enableInfra,
+          SAFETY:  notificationSettings.enableSafety,
         }[alert.category] ?? true;
 
       if (!categoryEnabled) return false;
-
       if (notificationSettings.criticalOnly) {
         return alert.priority === "CRITICAL" || alert.priority === "HIGH";
       }
@@ -321,34 +311,9 @@ export default function AlertsPage() {
   }, [alerts, notificationSettings]);
 
   const onDismiss = (id: string) => setAlerts((prev) => prev.filter((a) => a.id !== id));
+  const handleNotificationSettingsChange = (s: NotificationSettingsType) => setNotificationSettings(s);
 
-  const handleNotificationSettingsChange = (settings: NotificationSettingsType) => {
-    setNotificationSettings(settings);
-  };
-
-  // Handle incident reporting submission
-  const handleIncidentSubmit = async (
-    incidentType: string,
-    location: { lat: number; lon: number; address: string }
-  ) => {
-    try {
-      console.log("📝 Submitting incident report:", {
-        incident_type: incidentType,
-        latitude: location.lat,
-        longitude: location.lon,
-        address: location.address,
-        timestamp: new Date().toISOString(),
-      });
-      // TODO: POST to your backend
-    } catch (error) {
-      console.error("❌ Failed to submit incident report:", error);
-    }
-  };
-
-  const openQuickReport = () => setShowQuickReport(true);
-  const closeQuickReport = () => setShowQuickReport(false);
-
-  // ---------------- Render ----------------
+  /* ---------------- Render ---------------- */
   return (
     <main className="alerts-page">
       {/* Header */}
@@ -406,7 +371,7 @@ export default function AlertsPage() {
         </section>
       )}
 
-      {/* Categories (with emojis) */}
+      {/* Categories */}
       {alerts.length > 0 && (
         <section className="alerts-categories">
           <h3>Alert Categories</h3>
@@ -415,17 +380,7 @@ export default function AlertsPage() {
               .filter((cat) => cat.count > 0)
               .map((cat) => (
                 <div key={cat.key} className="category-item">
-                  <span>
-                    <span
-                      className="cat-emoji"
-                      role="img"
-                      aria-label={getCategoryLabel(cat.key)}
-                      style={{ marginRight: 8, fontSize: "1.15rem", lineHeight: 1 }}
-                    >
-                      {getCategoryEmoji(cat.key)}
-                    </span>
-                    {cat.name}
-                  </span>
+                  <span>{getCategoryEmoji(cat.key)} {getCategoryLabel(cat.key)}</span>
                   <small>{cat.desc}</small>
                   <div className="cat-count">{cat.count}</div>
                 </div>
@@ -434,49 +389,33 @@ export default function AlertsPage() {
         </section>
       )}
 
-      {/* Notification Settings */}
       <NotificationSettings onSettingsChange={handleNotificationSettingsChange} />
-
-      {/* Quick Report FAB */}
-      <QuickReportButton onClick={openQuickReport} />
-
-      {/* Quick Report Modal */}
+      <QuickReportButton onClick={() => setShowQuickReport(true)} />
       <QuickReportModal
         isOpen={showQuickReport}
-        onClose={closeQuickReport}
-        onSubmit={handleIncidentSubmit}
+        onClose={() => setShowQuickReport(false)}
+        onSubmit={() => {}}
       />
     </main>
   );
 }
 
-// --------------- Emoji helpers ---------------
+/* --------------- Emoji helpers --------------- */
 function getCategoryEmoji(category: Category): string {
   switch (category) {
-    case "WEATHER":
-      return "🌧️";
-    case "TRAFFIC":
-      return "🚦";
-    case "INFRA":
-      return "🛠️";
-    case "SAFETY":
-      return "⚠️";
-    default:
-      return "🔔";
+    case "WEATHER": return "🌧️";
+    case "TRAFFIC": return "🚦";
+    case "INFRA":   return "🛠️";
+    case "SAFETY":  return "⚠️";
+    default:        return "🔔";
   }
 }
-
 function getCategoryLabel(category: Category): string {
   switch (category) {
-    case "WEATHER":
-      return "Weather";
-    case "TRAFFIC":
-      return "Traffic";
-    case "INFRA":
-      return "Infrastructure";
-    case "SAFETY":
-      return "Safety";
-    default:
-      return "Alerts";
+    case "WEATHER": return "Weather";
+    case "TRAFFIC": return "Traffic";
+    case "INFRA":   return "Infrastructure";
+    case "SAFETY":  return "Safety";
+    default:        return "Alerts";
   }
 }
