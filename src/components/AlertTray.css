@@ -87,6 +87,7 @@
   color: #fff; background: #222;  /* 預設 */
 }
 .tray-badge.sev-high   { background: #ef4444; }   /* 紅 */
+.tray-badge.sev-critical { background: #f87171; } /* 紅 */
 .tray-badge.sev-medium { background: #f59e0b; color: #000; } /* 橘 */
 .tray-badge.sev-low    { background: #10b981; }   /* 綠 */
 

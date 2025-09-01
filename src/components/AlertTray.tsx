@@ -1,4 +1,5 @@
-import { useMemo, useState } from "react";
+// src/components/AlertTray.tsx
+import { useEffect, useMemo, useState } from "react";
 import "./AlertTray.css";
 
 export type AlertLite = {
@@ -26,11 +27,18 @@ interface AlertTrayProps {
   alerts: AlertLite[];
 }
 
-const ACK_URL = "https://id6qv4dal6t7zyxr6uza7v6uui0ygjcn.lambda-url.ap-southeast-2.on.aws/";
+const ACK_URL =
+  "https://id6qv4dal6t7zyxr6uza7v6uui0ygjcn.lambda-url.ap-southeast-2.on.aws/";
+const GEOCODE_URL = import.meta.env.VITE_GEOCODE_URL as string | undefined; // optional backend proxy
 
 export default function AlertTray({ open, onClose, alerts }: AlertTrayProps) {
   const [acked, setAcked] = useState<Record<string, boolean>>(() => {
     try { return JSON.parse(localStorage.getItem("cs.acked") || "{}"); } catch { return {}; }
+  });
+
+  // cache addresses we’ve already looked up
+  const [addrMap, setAddrMap] = useState<Record<string, string>>(() => {
+    try { return JSON.parse(localStorage.getItem("cs.addrmap") || "{}"); } catch { return {}; }
   });
 
   const now = Math.floor(Date.now() / 1000);
@@ -41,6 +49,34 @@ export default function AlertTray({ open, onClose, alerts }: AlertTrayProps) {
       .filter(a => a.remaining > 0)
       .sort((a, b) => b.remaining - a.remaining);
   }, [alerts, now]);
+
+  // Reverse-geocode any item that has lat/lng but no address yet
+  useEffect(() => {
+    let aborted = false;
+    async function run() {
+      const toLookup = visible
+        .filter(a => !isWeather(a) && hasLL(a) && !addressFor(a, addrMap))
+        .slice(0, 5); // small batch
+
+      await Promise.all(
+        toLookup.map(async (a) => {
+          const key = keyFor(a);
+          try {
+            const addr = await reverseGeocode(a.lat!, a.lng!);
+            if (aborted) return;
+            setAddrMap(prev => {
+              const next = { ...prev, [key]: addr };
+              localStorage.setItem("cs.addrmap", JSON.stringify(next));
+              return next;
+            });
+          } catch {/* ignore; we’ll keep showing a placeholder */}
+        })
+      );
+    }
+    run();
+    return () => { aborted = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [visible.map(a => keyFor(a)).join("|")]);
 
   if (!open) return null;
 
@@ -73,6 +109,15 @@ export default function AlertTray({ open, onClose, alerts }: AlertTrayProps) {
     }
   }
 
+  function addressFor(a: AlertLite, cache = addrMap) {
+    // NEVER show coordinates to the user; prefer server, then cache, else blank
+    const server = shortenAddress(a.address || "");
+    if (server) return server;
+    const cached = shortenAddress(cache[keyFor(a)] || "");
+    if (cached) return cached;
+    return ""; // show placeholder while we fetch
+  }
+
   return (
     <div className="tray">
       <div className="tray-header">
@@ -90,13 +135,16 @@ export default function AlertTray({ open, onClose, alerts }: AlertTrayProps) {
       {visible.length > 0 && (
         <ul className="tray-list">
           {visible.map((a) => {
-            const hideThumb = isWeather(a); // ⭐ 天氣一律不顯示縮圖
+            const hideThumb = isWeather(a);
+            const prettyType = prettyIncidentType(a);
+            const addr = addressFor(a);
+            const locating = !addr && hasLL(a) && !isWeather(a);
+
             return (
               <li
                 key={a.clusterId || String(a.expiresAt)}
                 className={`tray-item ${sevToClass(a.severity || "medium")} ${hideThumb ? "no-thumb" : ""}`}
               >
-                {/* 縮圖：天氣不顯示，其它有圖才顯示 */}
                 {!hideThumb && (
                   <div className="tray-thumb">
                     {a.photoUrls?.[0] ? (
@@ -115,7 +163,6 @@ export default function AlertTray({ open, onClose, alerts }: AlertTrayProps) {
                     <span className="tray-title-2">{titleOf(a)}</span>
                   </div>
 
-                  {/* 有 description（天氣/系統）就顯示；否則顯示原本狀態/數量 */}
                   {a.description ? (
                     <>
                       <div className="tray-desc">{a.description}</div>
@@ -127,9 +174,11 @@ export default function AlertTray({ open, onClose, alerts }: AlertTrayProps) {
                       )}
                     </>
                   ) : (
+                    // NEW: "<Type> · <Real address>" (no raw coordinates, ever)
                     <div className="tray-desc">
-                      {(a.status || "active")} · reports: {a.reportCount ?? 0}
-                      {typeof a.ackCount === "number" ? ` · confirmed: ${a.ackCount}` : ""}
+                      {prettyType}
+                      {addr && ` · ${addr}`}
+                      {locating && " · Locating address…"}
                     </div>
                   )}
 
@@ -169,12 +218,13 @@ function isWeather(a: AlertLite) {
 }
 
 function isAckable(a: AlertLite) {
-  if (a.ackable === false) return false; // 明確禁止
-  if (isWeather(a)) return false;        // 天氣不顯示 Confirm
+  if (a.ackable === false) return false;
+  if (isWeather(a)) return false;
   return true;
 }
 
 function sevToClass(sev: string) {
+  if (sev === "critical") return "sev-critical";
   if (sev === "high") return "sev-high";
   if (sev === "medium") return "sev-medium";
   return "sev-low";
@@ -186,8 +236,83 @@ function titleOf(a: AlertLite) {
   return (a.incidentType || "").replace(/_/g, " ").trim() || "Incident";
 }
 
+function prettyIncidentType(a: AlertLite) {
+  const raw = (a.incidentType || "").replace(/_/g, " ").toLowerCase();
+  return raw
+    .split(" ")
+    .filter(Boolean)
+    .map((w) => w[0]?.toUpperCase() + w.slice(1))
+    .join(" ")
+    .trim() || "Incident";
+}
+
 function formatMMSS(sec: number) {
   const m = Math.floor(sec / 60);
   const s = Math.floor(sec % 60);
   return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+}
+
+function hasLL(a: AlertLite): a is AlertLite & { lat: number; lng: number } {
+  return Number.isFinite(a.lat) && Number.isFinite(a.lng);
+}
+
+function keyFor(a: AlertLite) {
+  if (a.clusterId) return `id:${a.clusterId}`;
+  if (hasLL(a)) return `ll:${a.lat!.toFixed(5)}:${a.lng!.toFixed(5)}`;
+  return `ts:${a.expiresAt}`;
+}
+
+function shortenAddress(s: string) {
+  if (!s) return "";
+  // Trim long country tails and duplicate commas; keep "street, suburb, STATE PC"
+  return s
+    .replace(/\s*,\s*Australia$/i, "")
+    .replace(/\s*,\s*Victoria$/i, " VIC")
+    .replace(/\s*,\s*New South Wales$/i, " NSW")
+    .replace(/\s*,\s*Queensland$/i, " QLD")
+    .replace(/\s*,\s*South Australia$/i, " SA")
+    .replace(/\s*,\s*Western Australia$/i, " WA")
+    .replace(/\s*,\s*Tasmania$/i, " TAS")
+    .replace(/\s*,\s*Northern Territory$/i, " NT")
+    .replace(/\s*,\s*Australian Capital Territory$/i, " ACT")
+    .replace(/\s*,\s*,+/g, ", ")
+    .trim();
+}
+
+async function reverseGeocode(lat: number, lng: number): Promise<string> {
+  // Prefer your backend proxy if provided (best for CORS & rate limiting)
+  if (GEOCODE_URL) {
+    const r = await fetch(`${GEOCODE_URL}?lat=${lat}&lng=${lng}`);
+    const j = await r.json();
+    const out =
+      j.address ||
+      j.formatted ||
+      j.display_name ||
+      compactAddress(j.address || {});
+    return shortenAddress(out || "");
+  }
+
+  // Fallback: OpenStreetMap Nominatim (consider proxying if you hit CORS/rate-limits)
+  const url = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}`;
+  const r = await fetch(url, {
+    headers: {
+      "Accept-Language": "en-AU",
+      "User-Agent": "CycSafe/1.0 (https://example.cycsafe)", // may be ignored by browsers; fine
+    } as any,
+  });
+  const j = await r.json();
+  const out = compactAddress(j.address || {}) || j.display_name || "";
+  return shortenAddress(out);
+}
+
+function compactAddress(adr: any): string {
+  // Try to get "12 Poplar St, Box Hill VIC 3128"
+  const num = adr.house_number;
+  const road = adr.road || adr.pedestrian || adr.path;
+  const suburb = adr.suburb || adr.neighbourhood || adr.village || adr.town || adr.city;
+  const state = adr.state_code || adr.state || adr.region;
+  const pc = adr.postcode;
+  const line1 = [num, road].filter(Boolean).join(" ");
+  const line2 = [suburb, [state, pc].filter(Boolean).join(" ")].filter(Boolean).join(", ");
+  return [line1, line2].filter(Boolean).join(", ");
 }
