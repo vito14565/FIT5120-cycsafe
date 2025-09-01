@@ -77,22 +77,43 @@ function buildWeatherAlert(weather: WeatherResp, address: string): AlertModel | 
   const windKmh = windMs * 3.6;
   const gustsKmh = gusts * 3.6;
   
-  const isSevere = windKmh >= WIND_HIGH || rain >= RAIN_HIGH || gustsKmh >= WIND_HIGH * 1.5;
-  const isAdvisory = windKmh >= WIND_MED || rain >= RAIN_MED;
+  // Debug the actual weather values
+  console.log("🌤️ Weather conditions:", {
+    windKmh: Math.round(windKmh * 10) / 10,
+    gustsKmh: Math.round(gustsKmh * 10) / 10,
+    rain,
+    weather_code,
+    windThreshold: WIND_MED,
+    rainThreshold: RAIN_MED
+  });
   
-  if (!isSevere && !isAdvisory) return null;
+  const isSevere = windKmh >= WIND_HIGH || rain >= RAIN_HIGH || gustsKmh >= WIND_HIGH * 1.5;
+  const isAdvisory = windKmh >= WIND_MED || rain >= RAIN_MED || gustsKmh >= WIND_MED * 1.5;
+  
+  console.log("🌤️ Weather alert check:", { isSevere, isAdvisory });
 
   const condition = getWeatherCondition(weather_code);
-  const priority: Priority = isSevere ? "CRITICAL" : "MEDIUM";
   
-  const title = isSevere ? "Severe Weather Warning" : "Weather Advisory";
+  // Always create a weather card, but adjust priority and content based on conditions
+  let priority: Priority;
+  let title: string;
+  let description: string;
   
-  let description = "";
   if (isSevere) {
+    priority = "CRITICAL";
+    title = "Severe Weather Warning";
     description = `Strong winds (${Math.round(windKmh)} km/h)${gustsKmh > windKmh * 1.2 ? ` with gusts up to ${Math.round(gustsKmh)} km/h` : ''} and ${rain > 0 ? `heavy rain (${rain.toFixed(1)} mm/h)` : condition.toLowerCase()} expected. Reduced visibility and slippery conditions.`;
+  } else if (isAdvisory) {
+    priority = "MEDIUM";
+    title = "Weather Advisory";
+    description = `${condition} with moderate winds (${Math.round(windKmh)} km/h)${gustsKmh > windKmh * 1.2 ? ` and gusts up to ${Math.round(gustsKmh)} km/h` : ''}${rain > 0 ? ` and light rain (${rain.toFixed(1)} mm/h)` : ''}. Exercise caution while cycling.`;
   } else {
-    description = `${condition} with moderate winds (${Math.round(windKmh)} km/h)${rain > 0 ? ` and light rain (${rain.toFixed(1)} mm/h)` : ''}. Exercise caution while cycling.`;
+    priority = "LOW";
+    title = "Current Conditions";
+    description = `${condition} with light winds (${Math.round(windKmh)} km/h)${gustsKmh > windKmh * 1.2 ? ` and occasional gusts to ${Math.round(gustsKmh)} km/h` : ''}. Good conditions for cycling.`;
   }
+
+  console.log("✅ Creating weather card:", { title, priority, windKmh, gustsKmh, rain });
 
   return {
     id: `weather#${Date.now()}`,
@@ -111,47 +132,28 @@ function buildWeatherAlert(weather: WeatherResp, address: string): AlertModel | 
 }
 
 async function fetchWeatherData(lat: number, lon: number, signal?: AbortSignal): Promise<WeatherResp | null> {
-  const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=weather_code,rain,wind_speed_10m,wind_gusts_10m,snowfall,showers&timezone=Australia%2FSydney`;
-  
-  // Try direct fetch first
   try {
-    console.log(`🔄 Trying direct weather fetch`);
-    const response = await fetch(url, { signal, mode: 'cors' });
-    if (response.ok) {
-      console.log(`✅ Direct weather fetch successful!`);
-      return await response.json();
-    }
-  } catch (error) {
-    console.warn(`❌ Direct weather fetch failed:`, error.message);
-  }
-  
-  // Try CORS proxies for weather
-  const proxies = [
-    `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`,
-    `https://corsproxy.io/?${encodeURIComponent(url)}`,
-    `https://cors-anywhere.herokuapp.com/${url}`,
-  ];
-  
-  for (let i = 0; i < proxies.length; i++) {
-    try {
-      console.log(`🔄 Trying weather proxy ${i + 1}`);
-      
-      const response = await fetch(proxies[i], { signal });
-      if (!response.ok) throw new Error(`HTTP ${response.status}`);
-      
-      const data = await response.json();
-      console.log(`✅ Weather proxy ${i + 1} successful!`);
-      return data;
-      
-    } catch (error) {
-      console.warn(`❌ Weather proxy ${i + 1} failed:`, error.message);
-      if (i === proxies.length - 1) {
-        throw new Error(`All weather proxy attempts failed`);
+    // Use Vite dev server proxy - no CORS issues!
+    const url = `/api/weather/v1/forecast?latitude=${lat}&longitude=${lon}&current=weather_code,rain,wind_speed_10m,wind_gusts_10m,snowfall,showers&timezone=Australia%2FSydney`;
+    
+    console.log(`🔄 Fetching weather via Vite proxy`);
+    const response = await fetch(url, { 
+      signal,
+      headers: {
+        'Accept': 'application/json'
       }
-    }
+    });
+    
+    if (!response.ok) throw new Error(`Weather API error: ${response.status}`);
+    
+    const data = await response.json();
+    console.log(`✅ Weather proxy fetch successful!`);
+    return data;
+    
+  } catch (error) {
+    console.error("❌ Weather fetch failed:", error.message);
+    return null;
   }
-  
-  return null;
 }
 
 // Simple geocoding to get address from coords
