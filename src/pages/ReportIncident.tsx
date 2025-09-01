@@ -3,8 +3,6 @@ import "./ReportIncident.css";
 import alertIcon from "../assets/alert-red.svg";
 import { useState, useMemo, useCallback, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import IncidentTypeSelect, { getIncidentTypeMeta } from "./IncidentTypeSelect";
-import type { IncidentTypeCode } from "./IncidentTypeSelect";
 
 import {
   TextField,
@@ -41,6 +39,17 @@ import CameraCaptureDialog from "../components/CameraCaptureDialog";
 /* API */
 import { createIncident, getUploadUrl } from "../lib/api";
 import type { CreateIncidentPayload } from "../lib/api";
+
+/* ====== 事故類型定義 ====== */
+const incidentTypes = {
+  "near-miss": "Near Miss",
+  "collision": "Collision",
+  "road-hazard": "Road Hazard",
+  "infrastructure": "Poor Infrastructure",
+  "harassment": "Harassment",
+  "theft": "Theft/Vandalism",
+  "other": "Other"
+};
 
 /* ====== 顏色與文字對照表 ====== */
 type SeverityCode = "low" | "medium" | "high" | "critical";
@@ -125,7 +134,7 @@ async function normalizeToJpeg(file: File, maxDim = MAX_DIM, maxMB = MAX_MB): Pr
 
 /* ====== 主頁面 ====== */
 export default function ReportIncident() {
-  const [incidentType, setIncidentType] = useState<IncidentTypeCode | "">("");
+  const [incidentType, setIncidentType] = useState<string>("");
   const [severity, setSeverity] = useState<SeverityCode | "">("");
   const [location, setLocation] = useState("");
 
@@ -360,7 +369,6 @@ export default function ReportIncident() {
     setSubmitting(true);
     try {
       const pictureKeys = await uploadAllPhotos(photos);
-      const typeMeta = getIncidentTypeMeta(incidentType || undefined);
 
       const payload: CreateIncidentPayload = {
         Timestamp: dateTime!.toDate().toISOString(),
@@ -371,8 +379,8 @@ export default function ReportIncident() {
         LGA: "",
         Verification: "pending",
         Picture: pictureKeys,
-        Incident_type: incidentType as IncidentTypeCode,
-        Incident_type_desc: typeMeta?.label || "Other",
+        Incident_type: incidentType,
+        Incident_type_desc: incidentTypes[incidentType as keyof typeof incidentTypes] || "Other",
       };
 
       await createIncident(payload);
@@ -421,13 +429,24 @@ export default function ReportIncident() {
 
         {/* Incident Type */}
         <label className="form-label">Incident Type *</label>
-        <IncidentTypeSelect
-          value={incidentType}
-          onChange={(val) => setIncidentType(val)}
-          error={!!errors.incidentType}
-          helperText={errors.incidentType}
-          required
-        />
+        <FormControl fullWidth required error={!!errors.incidentType}>
+          <Select
+            value={incidentType}
+            onChange={(e) => setIncidentType(e.target.value)}
+            displayEmpty
+            sx={{ backgroundColor: "#fff", borderRadius: "6px", "& fieldset": { borderColor: "#ddd" } }}
+          >
+            <MenuItem value="">
+              <em>Select incident type</em>
+            </MenuItem>
+            {Object.entries(incidentTypes).map(([value, label]) => (
+              <MenuItem key={value} value={value}>
+                {label}
+              </MenuItem>
+            ))}
+          </Select>
+          {errors.incidentType && <span style={{ color: "red", fontSize: "0.8rem" }}>{errors.incidentType}</span>}
+        </FormControl>
 
         {/* Location */}
         <label className="form-label">Location *</label>
@@ -501,6 +520,7 @@ export default function ReportIncident() {
                 </span>
               );
             }}
+            sx={{ backgroundColor: "#fff", borderRadius: "6px", "& fieldset": { borderColor: "#ddd" } }}
           >
             <MenuItem value="">
               <em>Select severity level</em>

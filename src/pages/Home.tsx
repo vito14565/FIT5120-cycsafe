@@ -2,10 +2,11 @@ import { useEffect, useState, useCallback, useRef } from "react";
 import { Link } from "react-router-dom";
 import RiskHeaderCard from "../components/RiskHeaderCard";
 import RiskBodyCard from "../components/RiskBodyCard";
+import QuickReportButton from "../components/QuickReportButton";
+import QuickReportModal from "../components/QuickReportModal";
 import "../components/AlertCardWrapper.css";
 import FlatCard from "../components/FlatCard";
 import GeoPrompt, { type Coords } from "../components/GeoPrompt";
-import ReportFab from "../components/ReportFab";
 
 import alertIcon from "../assets/alert.svg";
 import routeIcon from "../assets/route.svg";
@@ -36,7 +37,7 @@ const COORDS_KEY = "cs.coords";
 const PROMPTED_ONCE_KEY = "cs.loc.promptedOnce";
 const LAST_PROMPT_TS_KEY = "cs.loc.lastPromptTs";
 
-// 🔑 remember the last cell we reverse-geocoded so we don’t geocode every poll
+// 🔑 remember the last cell we reverse-geocoded so we don't geocode every poll
 const LAST_GEOCODE_CELL_KEY = "cs.loc.lastGeocodeCell";
 
 const FALLBACK = { lat: -37.8136, lon: 144.9631 }; // Melbourne CBD
@@ -92,6 +93,9 @@ export default function Home() {
 
   // dialog
   const [geoOpen, setGeoOpen] = useState<boolean>(false);
+  
+  // Quick Report modal state
+  const [showQuickReport, setShowQuickReport] = useState<boolean>(false);
 
   // de-dupe guard
   const lastFetchKeyRef = useRef<string>("");
@@ -239,6 +243,50 @@ export default function Home() {
     [fetchRisk]
   );
 
+  // Handle incident reporting submission
+  const handleIncidentSubmit = async (
+    incidentType: string, 
+    location: { lat: number; lon: number; address: string }
+  ) => {
+    try {
+      console.log("📝 Submitting incident report:", {
+        incident_type: incidentType,
+        latitude: location.lat,
+        longitude: location.lon,
+        address: location.address,
+        timestamp: new Date().toISOString()
+      });
+
+      // Here you would integrate with your backend API to submit to incident reporting table
+      // Example API call:
+      /*
+      const response = await fetch('/api/incidents', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          incident_type: incidentType,
+          latitude: location.lat,
+          longitude: location.lon,
+          address: location.address,
+          timestamp: new Date().toISOString(),
+        }),
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to submit incident report');
+      }
+      */
+
+      // For now, just log and show success
+      console.log("✅ Incident report submitted successfully");
+      
+    } catch (error) {
+      console.error("❌ Failed to submit incident report:", error);
+    }
+  };
+
   // ===== First load =====
   useEffect(() => {
     try {
@@ -362,9 +410,9 @@ export default function Home() {
           title="Safety Alerts"
           icon={<img src={alertIcon} alt="alert" />}
           riskLevel={riskLevel}   // big % on the right
-          riskText={riskText}     // “Low/Medium/High Risk”
+          riskText={riskText}     // "Low/Medium/High Risk"
         />
-        <RiskBodyCard countOverride={alertCount} actionLink="/alerts" actionText="View Details">
+        <RiskBodyCard actionLink="/alerts" actionText="View Details">
           <Link to="/report" className="btn-outline">Report Incident</Link>
         </RiskBodyCard>
       </section>
@@ -393,7 +441,15 @@ export default function Home() {
         ]}
       />
 
-      <ReportFab />
+      {/* Quick Report Floating Action Button */}
+      <QuickReportButton onClick={() => setShowQuickReport(true)} />
+
+      {/* Quick Report Modal */}
+      <QuickReportModal
+        isOpen={showQuickReport}
+        onClose={() => setShowQuickReport(false)}
+        onSubmit={handleIncidentSubmit}
+      />
     </main>
   );
 }

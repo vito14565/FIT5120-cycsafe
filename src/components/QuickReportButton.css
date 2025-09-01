@@ -1,0 +1,49 @@
+/* QuickReportButton.css */
+.quick-report-fab {
+  position: fixed;
+  bottom: 2rem;
+  right: 2rem;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: #dc2626;
+  border: none;
+  color: white;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 12px rgba(220, 38, 38, 0.4);
+  transition: all 0.2s ease;
+  z-index: 1000;
+}
+
+.quick-report-fab:hover {
+  background: #b91c1c;
+  transform: scale(1.05);
+  box-shadow: 0 6px 20px rgba(220, 38, 38, 0.5);
+}
+
+.quick-report-fab:active {
+  transform: scale(0.95);
+}
+
+.quick-report-fab svg {
+  width: 24px;
+  height: 24px;
+}
+
+/* Mobile responsiveness */
+@media (max-width: 768px) {
+  .quick-report-fab {
+    bottom: 1.5rem;
+    right: 1.5rem;
+    width: 52px;
+    height: 52px;
+  }
+  
+  .quick-report-fab svg {
+    width: 22px;
+    height: 22px;
+  }
+}

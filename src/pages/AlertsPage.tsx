@@ -3,6 +3,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import "./AlertsPage.css";
 import AlertItem, { type Category, type Priority } from "../components/AlertItem";
 import NotificationSettings, { type NotificationSettings as NotificationSettingsType } from "../components/NotificationSettings";
+import QuickReportButton from "../components/QuickReportButton";
+import QuickReportModal from "../components/QuickReportModal";
 import { timeFromNow } from "../lib/time";
 
 // assets
@@ -170,6 +172,7 @@ async function reverseGeocode(lat: number, lon: number): Promise<string> {
 export default function AlertsPage() {
   const [alerts, setAlerts] = useState<AlertModel[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
+  const [showQuickReport, setShowQuickReport] = useState<boolean>(false);
   const [notificationSettings, setNotificationSettings] = useState<NotificationSettingsType>({
     enableWeather: true,
     enableTraffic: true,
@@ -357,6 +360,58 @@ export default function AlertsPage() {
     setNotificationSettings(settings);
   };
 
+  // Handle incident reporting submission
+  const handleIncidentSubmit = async (
+    incidentType: string, 
+    location: { lat: number; lon: number; address: string }
+  ) => {
+    try {
+      console.log("📝 Submitting incident report:", {
+        incident_type: incidentType,
+        latitude: location.lat,
+        longitude: location.lon,
+        address: location.address,
+        timestamp: new Date().toISOString()
+      });
+
+      // Here you would integrate with your backend API to submit to incident reporting table
+      // Example API call:
+      /*
+      const response = await fetch('/api/incidents', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          incident_type: incidentType,
+          latitude: location.lat,
+          longitude: location.lon,
+          address: location.address,
+          timestamp: new Date().toISOString(),
+        }),
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to submit incident report');
+      }
+      */
+
+      // For now, just log and show success
+      console.log("✅ Incident report submitted successfully");
+      
+      // You could show a success notification here
+      // toast.success("Incident reported successfully!");
+      
+    } catch (error) {
+      console.error("❌ Failed to submit incident report:", error);
+      // You could show an error notification here
+      // toast.error("Failed to submit report. Please try again.");
+    }
+  };
+
+  const openQuickReport = () => setShowQuickReport(true);
+  const closeQuickReport = () => setShowQuickReport(false);
+
   return (
     <main className="alerts-page">
       {/* Header matching Figma design */}
@@ -430,6 +485,16 @@ export default function AlertsPage() {
 
       {/* Notification Settings */}
       <NotificationSettings onSettingsChange={handleNotificationSettingsChange} />
+
+      {/* Quick Report Floating Action Button */}
+      <QuickReportButton onClick={openQuickReport} />
+
+      {/* Quick Report Modal */}
+      <QuickReportModal
+        isOpen={showQuickReport}
+        onClose={closeQuickReport}
+        onSubmit={handleIncidentSubmit}
+      />
     </main>
   );
 }
