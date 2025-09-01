@@ -37,6 +37,9 @@ const COORDS_KEY = "cs.coords";
 const PROMPTED_ONCE_KEY = "cs.loc.promptedOnce";
 const LAST_PROMPT_TS_KEY = "cs.loc.lastPromptTs";
 
+// 🔑 remember the last cell we reverse-geocoded so we don’t geocode every poll
+const LAST_GEOCODE_CELL_KEY = "cs.loc.lastGeocodeCell";
+
 const FALLBACK = { lat: -37.8136, lon: 144.9631 }; // Melbourne CBD
 const RADIUS_M = 500; // our crash radius
 const SCAN_LIMIT = String(import.meta.env.VITE_CRASH_SCAN_LIMIT ?? "4000"); // keep modest in dev
@@ -54,6 +57,8 @@ type WeatherAlert = {
   address?: string;
   agoText?: string;
 };
+
+// ~110m lat cell; lon varies with cos(lat)
 function roundCell(lat: number, lon: number, p = 3) {
   const f = 10 ** p;
   const latc = Math.floor(lat * f) / f;
@@ -147,18 +152,29 @@ export default function Home() {
     []
   );
 
-  // Raw fetch (no guard)
+  // Decide when to reverse-geocode (per ~0.001° cell)
+  const shouldGeocode = (lat: number, lon: number) => {
+    try {
+      const cell = roundCell(lat, lon, 3);
+      const last = sessionStorage.getItem(LAST_GEOCODE_CELL_KEY);
+      return cell !== last;
+    } catch {
+      return true;
+    }
+  };
+
+  // Raw fetch (optionally request reverse geocode)
   const fetchRisk = useCallback(
-    async (lat: number, lon: number) => {
+    async (lat: number, lon: number, geocodeNow = false) => {
       try {
         const url = new URL(API);
         url.searchParams.set("lat", String(lat));
         url.searchParams.set("lon", String(lon));
         url.searchParams.set("r", String(RADIUS_M));
-        url.searchParams.set("limit", SCAN_LIMIT);
-        url.searchParams.set("r", String(RADIUS_M));
         url.searchParams.set("limit", String(import.meta.env.VITE_CRASH_SCAN_LIMIT ?? "6000")); // set 6000 in .env
-        url.searchParams.set("geocode", "0"); // skip reverse geocode on every poll
+
+        // ✅ only trigger reverse geocode when needed
+        url.searchParams.set("geocode", geocodeNow ? "1" : "0");
 
         const res = await fetch(url.toString(), { cache: "no-store" });
         const text = await res.text();
@@ -184,6 +200,14 @@ export default function Home() {
         setAtmosphere(data.atmosphere);
 
         publishWeatherFromRisk(data.riskText || "Low Risk", addr, lat, lon, data.weather);
+
+        // Remember the cell we geocoded so we don't do it again immediately
+        if (geocodeNow && data.address) {
+          try {
+            const cell = roundCell(lat, lon, 3);
+            sessionStorage.setItem(LAST_GEOCODE_CELL_KEY, cell);
+          } catch {}
+        }
       } catch (e) {
         console.error("fetch risk failed:", e);
         const addr = `${lat.toFixed(5)}, ${lon.toFixed(5)}`;
@@ -199,16 +223,26 @@ export default function Home() {
   );
 
   // Guarded wrapper to avoid spamming Lambda with same coords repeatedly
-  const fetchRiskGuarded = useCallback(async (lat: number, lon: number) => {
-    const key = `${lat.toFixed(5)},${lon.toFixed(5)}`;
-    const now = Date.now();
-    if (lastFetchKeyRef.current === key && now - lastFetchAtRef.current < FETCH_DEDUP_MS) {
-      return; // skip duplicate fetch
-    }
-    lastFetchKeyRef.current = key;
-    lastFetchAtRef.current = now;
-    await fetchRisk(lat, lon);
-  }, [fetchRisk]);
+  const fetchRiskGuarded = useCallback(
+    async (lat: number, lon: number, forceGeocode = false) => {
+      const key = `${lat.toFixed(5)},${lon.toFixed(5)}`;
+      const now = Date.now();
+
+      const geocodeNow = forceGeocode || shouldGeocode(lat, lon);
+
+      // If not geocoding, respect de-dupe
+      if (!geocodeNow) {
+        if (lastFetchKeyRef.current === key && now - lastFetchAtRef.current < FETCH_DEDUP_MS) {
+          return; // skip duplicate fetch
+        }
+      }
+
+      lastFetchKeyRef.current = key;
+      lastFetchAtRef.current = now;
+      await fetchRisk(lat, lon, geocodeNow);
+    },
+    [fetchRisk]
+  );
 
   // ===== First load =====
   useEffect(() => {
@@ -236,7 +270,8 @@ export default function Home() {
       }).catch(() => undefined as any);
       if (perm?.state === "granted") {
         navigator.geolocation.getCurrentPosition(
-          (pos) => fetchRiskGuarded(pos.coords.latitude, pos.coords.longitude),
+          // 🔥 First real GPS fix → force geocode for a human-readable name
+          (pos) => fetchRiskGuarded(pos.coords.latitude, pos.coords.longitude, true),
           () => {},
           { enableHighAccuracy: true, timeout: 8000, maximumAge: 5000 }
         );
@@ -254,7 +289,7 @@ export default function Home() {
     return () => window.removeEventListener("cs:prompt-geo", onPrompt);
   }, []);
 
-  // Refresh on focus (respect de-dupe)
+  // Refresh on focus (respect de-dupe; geocode only if entering new cell)
   useEffect(() => {
     const onVisible = () => {
       if (document.visibilityState === "visible") {
@@ -290,7 +325,8 @@ export default function Home() {
     setGeoOpen(false);
     sessionStorage.setItem(PROMPTED_ONCE_KEY, "1");
     sessionStorage.setItem(LAST_PROMPT_TS_KEY, String(Date.now()));
-    fetchRiskGuarded(c.lat, c.lon);
+    // User explicitly chose a new location → force geocode now
+    fetchRiskGuarded(c.lat, c.lon, true);
   };
   const onClosePrompt = () => {
     setGeoOpen(false);
@@ -302,17 +338,17 @@ export default function Home() {
     <main className="container has-fab">
       <GeoPrompt open={geoOpen} onGotCoords={onGotCoords} onClose={onClosePrompt} />
 
-<section className="alert-card-wrapper">
-  <RiskHeaderCard
-    title="Safety Alerts"
-    icon={<img src={alertIcon} alt="alert" />}
-    riskLevel={riskLevel}   // big % on the right
-    riskText={riskText}     // “Low/Medium/High Risk”
-  />
-  <RiskBodyCard countOverride={alertCount} actionLink="/alerts" actionText="View Details">
-    <Link to="/report" className="btn-outline">Report Incident</Link>
-  </RiskBodyCard>
-</section>
+      <section className="alert-card-wrapper">
+        <RiskHeaderCard
+          title="Safety Alerts"
+          icon={<img src={alertIcon} alt="alert" />}
+          riskLevel={riskLevel}   // big % on the right
+          riskText={riskText}     // “Low/Medium/High Risk”
+        />
+        <RiskBodyCard countOverride={alertCount} actionLink="/alerts" actionText="View Details">
+          <Link to="/report" className="btn-outline">Report Incident</Link>
+        </RiskBodyCard>
+      </section>
 
       <FlatCard
         title="Safe Routing"
