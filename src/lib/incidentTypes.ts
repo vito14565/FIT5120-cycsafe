@@ -2,12 +2,13 @@
 
 /** 標準代碼（寫入 DynamoDB 的值） */
 export type IncidentTypeCode =
-  | "VEHICLE_COLLISION"
-  | "NEAR_MISS"
-  | "ROAD_HAZARD"
-  | "POOR_INFRA"
-  | "AGGRESSIVE_DRIVER"
-  | "BIKE_THEFT"
+  | "COLLISION"
+  | "NEAR MISS"
+  | "ROAD HAZARD"
+  | "POOR INFRASTRUCTURE"
+  | "AGGRESSIVE DRIVER"
+  | "THEFT/VANDALISM"
+  | "HARASSMENT"
   | "OTHER";
 
 /** 代碼 → 前端顯示用 label / color */
@@ -16,12 +17,13 @@ export const INCIDENT_TYPES: {
   label: string;
   color: string;
 }[] = [
-  { code: "VEHICLE_COLLISION", label: "Vehicle Collision",      color: "red" },
-  { code: "NEAR_MISS",         label: "Near Miss",              color: "orange" },
-  { code: "ROAD_HAZARD",       label: "Road Hazard",            color: "gold" },
-  { code: "POOR_INFRA",        label: "Poor Infrastructure",    color: "blue" },
-  { code: "AGGRESSIVE_DRIVER", label: "Aggressive Driver",      color: "purple" },
-  { code: "BIKE_THEFT",        label: "Bike Theft",             color: "gray" },
+  { code: "COLLISION", label: "Vehicle Collision",      color: "red" },
+  { code: "NEAR MISS",         label: "Near Miss",              color: "orange" },
+  { code: "ROAD HAZARD",       label: "Road Hazard",            color: "gold" },
+  { code: "POOR INFRASTRUCTURE",        label: "Poor Infrastructure",    color: "blue" },
+  { code: "AGGRESSIVE DRIVER", label: "Aggressive Driver",      color: "purple" },
+  { code: "THEFT/VANDALISM",        label: "Theft/Vandalism",             color: "gray" },
+  { code: "HARASSMENT",             label: "Harassment",                  color: "darkgray" },
   { code: "OTHER",             label: "Other",                  color: "darkgray" },
 ];
 
