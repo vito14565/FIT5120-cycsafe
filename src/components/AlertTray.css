@@ -53,20 +53,72 @@
 .tray-item.medium   { border-color: #ffdca3; background: #fff8e6; }
 .tray-item.low      { border-color: #cfe8d6; background: #f2fbf5; }
 
-/* 縮圖 */
+/* ───── 縮圖區（改為支援多張縮圖） ───── */
 .tray-thumb {
-  width: 80px; height: 80px; flex: 0 0 auto;
-  border: 1px solid #e5e7eb; border-radius: 10px; overflow: hidden;
-  background: #f8fafc; display: flex; align-items: center; justify-content: center;
+  flex: 0 0 auto;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  background: #f8fafc;
+  padding: 6px;                /* 讓縮圖不要緊貼邊框 */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 96px;             /* 至少保有卡片感，即使只有 1 張或沒有圖 */
 }
-.tray-thumb img { width: 100%; height: 100%; object-fit: cover; }
-.tray-thumb-empty { font-size: 11px; color: #9ca3af; }
 
+/* 多張縮圖列 */
+.tray-thumbs-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+/* 縮圖按鈕（可聚焦/可點擊） */
+.tray-thumb-btn {
+  border: none;
+  padding: 0;
+  background: transparent;
+  border-radius: 8px;
+  cursor: pointer;
+  line-height: 0;
+}
+
+/* 單張縮圖圖片尺寸（與 TSX 對齊） */
+.tray-thumb-img {
+  width: 84px;
+  height: 58px;
+  object-fit: cover;
+  border-radius: 8px;
+  display: block;
+  box-shadow: 0 1px 2px rgba(0,0,0,.08);
+  transition: transform .18s ease, box-shadow .18s ease;
+}
+
+/* hover / focus 效果 */
+.tray-thumb-btn:hover .tray-thumb-img,
+.tray-thumb-btn:focus-visible .tray-thumb-img {
+  transform: scale(1.04);
+  box-shadow: 0 3px 10px rgba(0,0,0,.18);
+}
+.tray-thumb-btn:focus-visible {
+  outline: 2px solid #1976d2;
+  outline-offset: 2px;
+}
+
+.tray-thumb-empty {
+  font-size: 11px; color: #9ca3af;
+  padding: 8px 10px;
+}
+
+/* 內容區 */
 .tray-content { flex: 1 1 auto; min-width: 0; }
 .tray-row { display: flex; align-items: center; gap: 8px; }
 .tray-title-2 { font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .tray-desc { color: #333; margin: 6px 0 4px; }
+.tray-desc.small { font-size: 12px; color: #666; }
+.meta-right { display: flex; gap: 12px; }
 
+/* 底部區（倒數／確認） */
 .tray-meta {
   display: flex; justify-content: space-between; align-items: center;
   color: #6b7280; font-size: 12px; margin-top: 4px;
@@ -86,10 +138,10 @@
   font-size: 10px; font-weight: 800; padding: 2px 6px; border-radius: 6px;
   color: #fff; background: #222;  /* 預設 */
 }
-.tray-badge.sev-high   { background: #ef4444; }   /* 紅 */
-.tray-badge.sev-critical { background: #f87171; } /* 紅 */
-.tray-badge.sev-medium { background: #f59e0b; color: #000; } /* 橘 */
-.tray-badge.sev-low    { background: #10b981; }   /* 綠 */
+.tray-badge.sev-high     { background: #ef4444; }     /* 紅 */
+.tray-badge.sev-critical { background: #f87171; }     /* 淺紅 */
+.tray-badge.sev-medium   { background: #f59e0b; color: #000; } /* 橘 */
+.tray-badge.sev-low      { background: #10b981; }     /* 綠 */
 
 /* 底部時間戳 */
 .tray-foot { padding: 8px 12px; font-size: 11px; color: #6b7280; border-top: 1px solid #eee; text-align: right; }
@@ -105,7 +157,8 @@
   }
   .tray-list { max-height: 72vh; }
   .tray-item { padding: 12px; }
-  .tray-thumb { width: 92px; height: 92px; }
+  .tray-thumb { min-width: 92px; }
+  .tray-thumb-img { width: 78px; height: 52px; } /* 小螢幕縮小 */
   .tray-cta { padding: 10px 14px; font-size: 0.95rem; }
 }
 
@@ -116,7 +169,8 @@
     width: 560px; max-width: min(560px, 92vw);
   }
   .tray-list { max-height: 66vh; }
-  .tray-thumb { width: 96px; height: 96px; }
+  .tray-thumb { min-width: 96px; }
+  .tray-thumb-img { width: 84px; height: 58px; }
 }
 
 /* ───── 桌機 (≥1200px) ───── */
@@ -126,7 +180,8 @@
     width: 640px; max-width: min(640px, 90vw);
     box-shadow: 0 20px 50px rgba(0,0,0,.18);
   }
-  .tray-thumb { width: 110px; height: 110px; }
+  .tray-thumb { min-width: 110px; }
+  .tray-thumb-img { width: 96px; height: 64px; }
   .tray-item:hover { background: #fafafa; border-color: #e5e7eb; }
   .tray-cta:hover { background: #f3f4f6; }
 }
@@ -134,7 +189,8 @@
 /* ───── 超寬 (≥1600px) ───── */
 @media (min-width: 1600px) {
   .tray { right: 24px; width: 720px; max-width: min(720px, 70vw); }
-  .tray-thumb { width: 120px; height: 120px; }
+  .tray-thumb { min-width: 120px; }
+  .tray-thumb-img { width: 112px; height: 76px; }
 }
 
 /* ───── 捲動條 ───── */

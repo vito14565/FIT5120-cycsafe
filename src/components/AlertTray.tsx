@@ -1,6 +1,11 @@
 // src/components/AlertTray.tsx
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useCallback } from "react";
 import "./AlertTray.css";
+
+import { Dialog, IconButton } from "@mui/material";
+import CloseIcon from "@mui/icons-material/Close";
+import ChevronLeftIcon from "@mui/icons-material/ChevronLeft";
+import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 
 export type AlertLite = {
   clusterId?: string;
@@ -8,7 +13,7 @@ export type AlertLite = {
   status?: "pending" | "active";
   reportCount?: number;
   expiresAt: number;
-  severity?: "low" | "medium" | "high";
+  severity?: "low" | "medium" | "high" | "critical";
   lat?: number;
   lng?: number;
   photoUrls?: string[];
@@ -19,6 +24,8 @@ export type AlertLite = {
   ackable?: boolean;
   address?: string;  // optional, for weather line (right top)
   agoText?: string;  // optional, for weather line (right top)
+  // ===== runtime computed =====
+  remaining?: number;
 };
 
 interface AlertTrayProps {
@@ -46,8 +53,8 @@ export default function AlertTray({ open, onClose, alerts }: AlertTrayProps) {
     const list = Array.isArray(alerts) ? alerts : [];
     return list
       .map(a => ({ ...a, remaining: Math.max(0, Number(a.expiresAt || 0) - now) }))
-      .filter(a => a.remaining > 0)
-      .sort((a, b) => b.remaining - a.remaining);
+      .filter(a => a.remaining! > 0)
+      .sort((a, b) => b.remaining! - a.remaining!);
   }, [alerts, now]);
 
   // Reverse-geocode any item that has lat/lng but no address yet
@@ -77,6 +84,40 @@ export default function AlertTray({ open, onClose, alerts }: AlertTrayProps) {
     return () => { aborted = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [visible.map(a => keyFor(a)).join("|")]);
+
+  // ======================
+  // Lightbox state
+  // ======================
+  const [lbOpen, setLbOpen] = useState(false);
+  const [lbPhotos, setLbPhotos] = useState<string[]>([]);
+  const [lbIndex, setLbIndex] = useState(0);
+
+  const openLightbox = useCallback((photos: string[], i = 0) => {
+    if (!photos || photos.length === 0) return;
+    setLbPhotos(photos);
+    setLbIndex(Math.max(0, Math.min(i, photos.length - 1)));
+    setLbOpen(true);
+  }, []);
+
+  const lbPrev = useCallback(() => {
+    setLbIndex(i => (lbPhotos.length ? (i - 1 + lbPhotos.length) % lbPhotos.length : 0));
+  }, [lbPhotos.length]);
+
+  const lbNext = useCallback(() => {
+    setLbIndex(i => (lbPhotos.length ? (i + 1) % lbPhotos.length : 0));
+  }, [lbPhotos.length]);
+
+  // keyboard: Esc / ← / →
+  useEffect(() => {
+    if (!lbOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setLbOpen(false);
+      if (e.key === "ArrowLeft") lbPrev();
+      if (e.key === "ArrowRight") lbNext();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [lbOpen, lbPrev, lbNext]);
 
   if (!open) return null;
 
@@ -140,6 +181,9 @@ export default function AlertTray({ open, onClose, alerts }: AlertTrayProps) {
             const addr = addressFor(a);
             const locating = !addr && hasLL(a) && !isWeather(a);
 
+            // 顯示最多 3 張縮圖
+            const thumbs = (a.photoUrls || []).slice(0, 3);
+
             return (
               <li
                 key={a.clusterId || String(a.expiresAt)}
@@ -147,8 +191,30 @@ export default function AlertTray({ open, onClose, alerts }: AlertTrayProps) {
               >
                 {!hideThumb && (
                   <div className="tray-thumb">
-                    {a.photoUrls?.[0] ? (
-                      <img src={a.photoUrls[0]} alt="evidence" />
+                    {thumbs.length > 0 ? (
+                      <div className="tray-thumbs-row">
+                        {thumbs.map((url, i) => (
+                          <button
+                            key={i}
+                            className="tray-thumb-btn"
+                            onClick={() => openLightbox(a.photoUrls!, i)}
+                            title="Click to preview"
+                            aria-label={`Open photo ${i + 1}`}
+                          >
+                            <img
+                              src={url}
+                              alt={`evidence ${i + 1}`}
+                              className="tray-thumb-img"
+                              loading="lazy"
+                              onError={(e) => {
+                                // 簽名 URL 過期 → 加上 cache-buster
+                                const el = e.currentTarget as HTMLImageElement;
+                                el.src = url + (url.includes("?") ? "&" : "?") + "t=" + Date.now();
+                              }}
+                            />
+                          </button>
+                        ))}
+                      </div>
                     ) : (
                       <div className="tray-thumb-empty">No image</div>
                     )}
@@ -158,7 +224,7 @@ export default function AlertTray({ open, onClose, alerts }: AlertTrayProps) {
                 <div className="tray-content">
                   <div className="tray-row">
                     <span className={`tray-badge ${sevToClass(a.severity || "medium")}`}>
-                      {(a.severity || "medium").toUpperCase()}
+                      {(a.severity || "medium").toString().toUpperCase()}
                     </span>
                     <span className="tray-title-2">{titleOf(a)}</span>
                   </div>
@@ -174,7 +240,7 @@ export default function AlertTray({ open, onClose, alerts }: AlertTrayProps) {
                       )}
                     </>
                   ) : (
-                    // NEW: "<Type> · <Real address>" (no raw coordinates, ever)
+                    // "<Type> · <Real address>" (no raw coordinates, ever)
                     <div className="tray-desc">
                       {prettyType}
                       {addr && ` · ${addr}`}
@@ -204,6 +270,68 @@ export default function AlertTray({ open, onClose, alerts }: AlertTrayProps) {
       )}
 
       <div className="tray-foot">Updated just now</div>
+
+      {/* ===== Lightbox Dialog ===== */}
+      <Dialog
+        open={lbOpen}
+        onClose={() => setLbOpen(false)}
+        maxWidth="lg"
+        fullWidth
+        PaperProps={{ sx: { backgroundColor: "rgba(0,0,0,0.92)" } }}
+      >
+        <div
+          style={{
+            position: "relative",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            minHeight: "60vh",
+            padding: 16,
+          }}
+          onClick={() => setLbOpen(false)} // 點背景關閉
+        >
+          {lbPhotos.length > 1 && (
+            <>
+              <IconButton
+                onClick={(e) => { e.stopPropagation(); lbPrev(); }}
+                sx={{ position: "absolute", left: 8, top: "50%", transform: "translateY(-50%)", color: "white" }}
+                aria-label="Previous"
+              >
+                <ChevronLeftIcon fontSize="large" />
+              </IconButton>
+              <IconButton
+                onClick={(e) => { e.stopPropagation(); lbNext(); }}
+                sx={{ position: "absolute", right: 8, top: "50%", transform: "translateY(-50%)", color: "white" }}
+                aria-label="Next"
+              >
+                <ChevronRightIcon fontSize="large" />
+              </IconButton>
+            </>
+          )}
+
+          <IconButton
+            onClick={(e) => { e.stopPropagation(); setLbOpen(false); }}
+            sx={{ position: "absolute", right: 8, top: 8, color: "white" }}
+            aria-label="Close"
+          >
+            <CloseIcon />
+          </IconButton>
+
+          {lbPhotos.length > 0 && (
+            <img
+              src={lbPhotos[lbIndex]}
+              alt={`photo ${lbIndex + 1}`}
+              style={{ maxWidth: "92vw", maxHeight: "82vh", objectFit: "contain", borderRadius: 8 }}
+              onClick={(e) => e.stopPropagation()} // 避免點到圖片就關閉
+              onError={(e) => {
+                const el = e.currentTarget as HTMLImageElement;
+                const u = lbPhotos[lbIndex];
+                el.src = u + (u.includes("?") ? "&" : "?") + "t=" + Date.now();
+              }}
+            />
+          )}
+        </div>
+      </Dialog>
     </div>
   );
 }
@@ -224,9 +352,10 @@ function isAckable(a: AlertLite) {
 }
 
 function sevToClass(sev: string) {
-  if (sev === "critical") return "sev-critical";
-  if (sev === "high") return "sev-high";
-  if (sev === "medium") return "sev-medium";
+  const s = sev.toLowerCase();
+  if (s === "critical") return "sev-critical";
+  if (s === "high") return "sev-high";
+  if (s === "medium") return "sev-medium";
   return "sev-low";
 }
 
@@ -297,7 +426,7 @@ async function reverseGeocode(lat: number, lng: number): Promise<string> {
   const r = await fetch(url, {
     headers: {
       "Accept-Language": "en-AU",
-      "User-Agent": "CycSafe/1.0 (https://example.cycsafe)", // may be ignored by browsers; fine
+      "User-Agent": "CycSafe/1.0 (https://example.cycsafe)",
     } as any,
   });
   const j = await r.json();
