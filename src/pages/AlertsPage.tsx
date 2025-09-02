@@ -13,7 +13,7 @@ import { timeFromNow } from "../lib/time";
 import bellOutlineIcon from "../assets/bell-outline.svg";
 
 import {
-  fetchVicAlertsNearby,
+  fetchVicIncidents,
   type AlertModel as VicAlert,
 } from "../services/vicEmergency";
 
@@ -172,6 +172,14 @@ export default function AlertsPage() {
       pushNotifications: true,
     });
 
+  // NEW: 5–30 km groups
+  const [nearbyGroups, setNearbyGroups] = useState<Record<Category, VicAlert[]>>({
+    WEATHER: [],
+    TRAFFIC: [],
+    INFRA:   [],
+    SAFETY:  [],
+  });
+
   const coordsRef    = useRef<{ lat: number; lon: number }>(FALLBACK);
   const inFlightRef  = useRef<AbortController | null>(null);
   const lastFetchRef = useRef(0);
@@ -190,10 +198,12 @@ export default function AlertsPage() {
     try {
       const addressPromise = reverseGeocode(lat, lon);
 
-      const [weather, vicAlerts] = await Promise.all([
+      const [weather, vicExt] = await Promise.all([
         fetchWeatherData(lat, lon, ac.signal).catch(() => null),
-        // vic service already filters to 5km
-        fetchVicAlertsNearby(lat, lon, undefined, ac.signal).catch(() => []),
+        fetchVicIncidents(lat, lon, ac.signal).catch(() => ({
+          nearby: [],
+          within30ByCategory: { WEATHER: [], TRAFFIC: [], INFRA: [], SAFETY: [] },
+        })),
       ]);
 
       const address = await addressPromise;
@@ -205,13 +215,27 @@ export default function AlertsPage() {
         }
       } catch {}
 
+      // Active alerts (≤5km): weather + nearby incidents
       const list: AlertModel[] = [];
       if (weather) {
         const weatherAlert = buildWeatherAlert(weather, address);
         if (weatherAlert) list.push(weatherAlert); // show on top
       }
-      if (vicAlerts && vicAlerts.length > 0) {
-        list.push(...vicAlerts);
+
+      if (vicExt?.nearby?.length > 0) {
+        for (const v of vicExt.nearby) {
+          list.push({
+            id: v.id,
+            title: v.title,
+            description: v.description,
+            location: v.distanceKm != null
+              ? `${v.location} · ~${v.distanceKm.toFixed(1)} km`
+              : v.location,
+            timestamp: v.timestamp,
+            priority: v.priority,
+            category: v.category,
+          });
+        }
       }
 
       const sorted = uniqById(list).sort((a, b) => {
@@ -221,6 +245,13 @@ export default function AlertsPage() {
 
       setAlerts(sorted);
 
+      // 5–30 km groups
+      if (vicExt?.within30ByCategory) {
+        setNearbyGroups(vicExt.within30ByCategory);
+      } else {
+        setNearbyGroups({ WEATHER: [], TRAFFIC: [], INFRA: [], SAFETY: [] });
+      }
+
       try {
         localStorage.setItem("cs.alerts.total", String(sorted.length));
         window.dispatchEvent(new CustomEvent("cs:alerts", { detail: { total: sorted.length } }));
@@ -229,6 +260,7 @@ export default function AlertsPage() {
       if (e?.name !== "AbortError") {
         console.error("❌ Critical error in fetchAll:", e);
         setAlerts([]);
+        setNearbyGroups({ WEATHER: [], TRAFFIC: [], INFRA: [], SAFETY: [] });
         try {
           localStorage.setItem("cs.alerts.total", "0");
           window.dispatchEvent(new CustomEvent("cs:alerts", { detail: { total: 0 } }));
@@ -273,7 +305,7 @@ export default function AlertsPage() {
     [alerts]
   );
 
-  // Category counts
+  // Category counts (only for active alerts list)
   const categories = useMemo(() => {
     type CatItem = { key: Category; name: string; desc: string; count: number };
     const counts = alerts.reduce((acc, a) => {
@@ -291,7 +323,7 @@ export default function AlertsPage() {
     ] as CatItem[];
   }, [alerts]);
 
-  // Filter based on notification settings
+  // Filter based on notification settings (applies to active list)
   const filteredAlerts = useMemo(() => {
     return alerts.filter((alert) => {
       const categoryEnabled =
@@ -338,7 +370,7 @@ export default function AlertsPage() {
         </div>
       </section>
 
-      {/* List */}
+      {/* Active list (≤5 km) */}
       {loading && filteredAlerts.length === 0 ? (
         <div className="skeleton-list">
           <div className="skeleton-card" />
@@ -371,7 +403,45 @@ export default function AlertsPage() {
         </section>
       )}
 
-      {/* Categories */}
+      {/* Nearby but not immediate (5–30 km), grouped like iOS stacks */}
+      {Object.values(nearbyGroups).some(arr => arr.length > 0) && (
+        <section className="alerts-nearby-groups">
+          <h3>Nearby Alerts (5–30 km)</h3>
+
+          {(["WEATHER","TRAFFIC","INFRA","SAFETY"] as Category[])
+            .filter(cat => (nearbyGroups[cat] || []).length > 0)
+            .map((cat) => (
+              <div key={cat} className="group">
+                <div className={`group-header ${cat.toLowerCase()}`}>
+                  <span className="group-title">
+                    {getCategoryEmoji(cat)} {getCategoryLabel(cat)}
+                  </span>
+                  <span className="group-count">{nearbyGroups[cat].length}</span>
+                </div>
+
+                <div className="group-stack">
+                  {nearbyGroups[cat].map((v) => (
+                    <AlertItem
+                      key={v.id}
+                      title={v.title}
+                      description={v.description}
+                      location={
+                        v.distanceKm != null
+                          ? `${v.location} · ~${v.distanceKm.toFixed(1)} km away`
+                          : v.location
+                      }
+                      time={timeFromNow(v.timestamp)}
+                      priority={v.priority}
+                      category={v.category}
+                    />
+                  ))}
+                </div>
+              </div>
+            ))}
+        </section>
+      )}
+
+      {/* Categories for active list */}
       {alerts.length > 0 && (
         <section className="alerts-categories">
           <h3>Alert Categories</h3>

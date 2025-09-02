@@ -7,6 +7,8 @@ import CloseIcon from "@mui/icons-material/Close";
 import ChevronLeftIcon from "@mui/icons-material/ChevronLeft";
 import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 
+const API_BASE = import.meta.env.VITE_LAMBDA_URL as string;
+
 export type AlertLite = {
   clusterId?: string;
   incidentType?: string;
@@ -24,6 +26,7 @@ export type AlertLite = {
   ackable?: boolean;
   address?: string;  // optional, for weather line (right top)
   agoText?: string;  // optional, for weather line (right top)
+
   // ===== runtime computed =====
   remaining?: number;
 };
@@ -36,7 +39,6 @@ interface AlertTrayProps {
 
 const ACK_URL =
   "https://id6qv4dal6t7zyxr6uza7v6uui0ygjcn.lambda-url.ap-southeast-2.on.aws/";
-const GEOCODE_URL = import.meta.env.VITE_GEOCODE_URL as string | undefined; // optional backend proxy
 
 export default function AlertTray({ open, onClose, alerts }: AlertTrayProps) {
   const [acked, setAcked] = useState<Record<string, boolean>>(() => {
@@ -181,7 +183,7 @@ export default function AlertTray({ open, onClose, alerts }: AlertTrayProps) {
             const addr = addressFor(a);
             const locating = !addr && hasLL(a) && !isWeather(a);
 
-            // 顯示最多 3 張縮圖
+            // Show up to 3 thumbnails
             const thumbs = (a.photoUrls || []).slice(0, 3);
 
             return (
@@ -207,7 +209,7 @@ export default function AlertTray({ open, onClose, alerts }: AlertTrayProps) {
                               className="tray-thumb-img"
                               loading="lazy"
                               onError={(e) => {
-                                // 簽名 URL 過期 → 加上 cache-buster
+                                // Signed URL expired → add cache-buster
                                 const el = e.currentTarget as HTMLImageElement;
                                 el.src = url + (url.includes("?") ? "&" : "?") + "t=" + Date.now();
                               }}
@@ -288,7 +290,7 @@ export default function AlertTray({ open, onClose, alerts }: AlertTrayProps) {
             minHeight: "60vh",
             padding: 16,
           }}
-          onClick={() => setLbOpen(false)} // 點背景關閉
+          onClick={() => setLbOpen(false)} // click backdrop to close
         >
           {lbPhotos.length > 1 && (
             <>
@@ -322,7 +324,7 @@ export default function AlertTray({ open, onClose, alerts }: AlertTrayProps) {
               src={lbPhotos[lbIndex]}
               alt={`photo ${lbIndex + 1}`}
               style={{ maxWidth: "92vw", maxHeight: "82vh", objectFit: "contain", borderRadius: 8 }}
-              onClick={(e) => e.stopPropagation()} // 避免點到圖片就關閉
+              onClick={(e) => e.stopPropagation()}
               onError={(e) => {
                 const el = e.currentTarget as HTMLImageElement;
                 const u = lbPhotos[lbIndex];
@@ -409,31 +411,19 @@ function shortenAddress(s: string) {
 }
 
 async function reverseGeocode(lat: number, lng: number): Promise<string> {
-  // Prefer your backend proxy if provided (best for CORS & rate limiting)
-  if (GEOCODE_URL) {
-    const r = await fetch(`${GEOCODE_URL}?lat=${lat}&lng=${lng}`);
-    const j = await r.json();
-    const out =
-      j.address ||
-      j.formatted ||
-      j.display_name ||
-      compactAddress(j.address || {});
-    return shortenAddress(out || "");
-  }
-
-  // Fallback: OpenStreetMap Nominatim (consider proxying if you hit CORS/rate-limits)
-  const url = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}`;
-  const r = await fetch(url, {
-    headers: {
-      "Accept-Language": "en-AU",
-      "User-Agent": "CycSafe/1.0 (https://example.cycsafe)",
-    } as any,
-  });
+  // Use your Lambda geocode endpoint (no OpenStreet fallback)
+  const url = `${API_BASE}?mode=geocode&lat=${encodeURIComponent(lat)}&lon=${encodeURIComponent(lng)}`;
+  const r = await fetch(url, { method: "GET" });
+  if (!r.ok) throw new Error(`geocode http ${r.status}`);
   const j = await r.json();
-  const out = compactAddress(j.address || {}) || j.display_name || "";
+  const out =
+    (j.address || "").trim() ||
+    (j.formatted || "").trim() ||
+    (j.display_name || "").trim();
   return shortenAddress(out);
 }
 
+/* Optional utility kept around (not used directly right now) */
 function compactAddress(adr: any): string {
   // Try to get "12 Poplar St, Box Hill VIC 3128"
   const num = adr.house_number;

@@ -97,6 +97,79 @@
 }
 
 /* ─────────────────────────────────────────────
+   Nearby groups (5–30 km) — iOS-style stacks
+───────────────────────────────────────────── */
+.alerts-nearby-groups {
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  padding: 1.25rem 1.5rem;
+  box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1);
+  display: grid;
+  gap: 12px;
+}
+
+.alerts-nearby-groups > h3 {
+  margin: 0 0 0.25rem 0;
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: #1e293b;
+}
+
+.alerts-nearby-groups .group {
+  display: grid;
+  gap: 8px;
+}
+
+.alerts-nearby-groups .group-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  border-radius: 12px;
+  background: var(--group-bg, #f6f7f9);
+  font-weight: 600;
+}
+
+.alerts-nearby-groups .group-header.weather  { --group-bg: #eef6ff; }
+.alerts-nearby-groups .group-header.traffic  { --group-bg: #fff4ed; }
+.alerts-nearby-groups .group-header.infra    { --group-bg: #f3f7f0; }
+.alerts-nearby-groups .group-header.safety   { --group-bg: #fff2f2; }
+
+.alerts-nearby-groups .group-title {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  color: #0f172a;
+}
+
+.alerts-nearby-groups .group-count {
+  background: rgba(0,0,0,0.06);
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 12px;
+  color: #334155;
+}
+
+.alerts-nearby-groups .group-stack {
+  position: relative;
+  display: grid;
+  gap: 10px;
+}
+
+/* Slight lift on hover for a stacked feel */
+@media (min-width: 720px) {
+  .alerts-nearby-groups .group-stack .alert-item {
+    position: relative;
+    transition: transform 120ms ease, box-shadow 120ms ease;
+  }
+  .alerts-nearby-groups .group-stack .alert-item:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 18px rgba(0,0,0,0.08);
+  }
+}
+
+/* ─────────────────────────────────────────────
    Categories section matching Figma
 ───────────────────────────────────────────── */
 .alerts-categories {
