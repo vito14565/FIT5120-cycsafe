@@ -59,6 +59,18 @@ type WeatherAlert = {
   agoText?: string;
 };
 
+// ===== HAPTICS (inlined helper + UI) =====
+const HAPTICS_KEY = "cs.haptics.enabled";
+const canVibrate = () =>
+  typeof navigator !== "undefined" &&
+  "vibrate" in navigator &&
+  typeof (navigator as any).vibrate === "function" &&
+  typeof window !== "undefined" &&
+  window.isSecureContext; // HTTPS or localhost
+
+const vibrateOnce = () => (navigator as any).vibrate?.([160]);
+const vibrateTwice = () => (navigator as any).vibrate?.([160, 90, 160]);
+
 // ~110m lat cell; lon varies with cos(lat)
 function roundCell(lat: number, lon: number, p = 3) {
   const f = 10 ** p;
@@ -101,6 +113,56 @@ export default function Home() {
   // de-dupe guard
   const lastFetchKeyRef = useRef<string>("");
   const lastFetchAtRef = useRef<number>(0);
+
+  // ===== Haptics state (persisted) =====
+  const [hapticsEnabled, setHapticsEnabled] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem(HAPTICS_KEY) === "1";
+    } catch { return false; }
+  });
+  const prevRiskRef = useRef<RiskText | null>(null);
+  const initializedRef = useRef(false); // avoid buzzing on very first render
+  const supported = canVibrate();
+
+  // Minimal pretty pill styles (no external CSS touched)
+  const pillWrapStyle: React.CSSProperties = {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: "10px",
+    padding: "10px 12px",
+    borderRadius: 12,
+    background: "#f4f6fb",
+    border: "1px solid rgba(0,0,0,0.05)",
+    marginBottom: 10
+  };
+  const pillNoteStyle: React.CSSProperties = {
+    fontSize: 12,
+    color: "#6b7280",
+    marginTop: 4
+  };
+  const toggleBtnStyle: React.CSSProperties = {
+    position: "relative",
+    width: 56,
+    height: 32,
+    borderRadius: 999,
+    border: "1px solid rgba(0,0,0,0.1)",
+    background: hapticsEnabled ? "linear-gradient(90deg,#22c55e,#16a34a)" : "#e5e7eb",
+    cursor: supported ? "pointer" : "not-allowed",
+    transition: "background 200ms ease",
+    outline: "none"
+  };
+  const knobStyle: React.CSSProperties = {
+    position: "absolute",
+    top: 3,
+    left: hapticsEnabled ? 28 : 3,
+    width: 26,
+    height: 26,
+    background: "#fff",
+    borderRadius: "50%",
+    boxShadow: "0 2px 6px rgba(0,0,0,0.15)",
+    transition: "left 180ms ease"
+  };
 
   const markPromptedNow = () => {
     sessionStorage.setItem(PROMPTED_ONCE_KEY, "1");
@@ -369,6 +431,46 @@ export default function Home() {
     };
   }, []);
 
+  // ===== Haptics: fire only when risk CHANGES into Medium/High =====
+  useEffect(() => {
+    if (!hapticsEnabled || !supported) {
+      prevRiskRef.current = riskText; // keep tracking even if disabled
+      initializedRef.current = true;
+      return;
+    }
+    if (document.visibilityState !== "visible") {
+      prevRiskRef.current = riskText;
+      initializedRef.current = true;
+      return; // don't buzz in background tab
+    }
+
+    const prev = prevRiskRef.current;
+    const now = riskText;
+
+    // Skip on very first run (avoid buzz on initial paint)
+    if (!initializedRef.current) {
+      initializedRef.current = true;
+      prevRiskRef.current = now;
+      return;
+    }
+
+    const changed = prev !== now;
+    if (changed) {
+      if (now === "Medium Risk") {
+        vibrateOnce();
+      } else if (now === "High Risk") {
+        vibrateTwice();
+      }
+    }
+
+    prevRiskRef.current = now;
+  }, [riskText, hapticsEnabled, supported]);
+
+  // Persist toggle to localStorage
+  useEffect(() => {
+    try { localStorage.setItem(HAPTICS_KEY, hapticsEnabled ? "1" : "0"); } catch {}
+  }, [hapticsEnabled]);
+
   // GeoPrompt returns
   const onGotCoords = (c: Coords) => {
     setGeoOpen(false);
@@ -395,6 +497,37 @@ export default function Home() {
           riskText={riskText}     // "Low/Medium/High Risk"
         />
         <RiskBodyCard actionLink="/alerts" actionText="View Details">
+
+          {/* Haptic alerts toggle (pretty pill) */}
+          <div style={pillWrapStyle} aria-live="polite">
+            <div style={{display: "flex", flexDirection: "column"}}>
+              <strong style={{fontSize: 14, color: "#111827"}}>Haptic alerts</strong>
+              <span style={pillNoteStyle}>
+                {supported
+                  ? "Vibrate on Medium/High risk (Android Chrome)."
+                  : "Not supported on this device/browser."}
+              </span>
+            </div>
+            <button
+              type="button"
+              aria-pressed={hapticsEnabled}
+              aria-label={hapticsEnabled ? "Disable haptic alerts" : "Enable haptic alerts"}
+              onClick={() => {
+                if (!supported) return;
+                setHapticsEnabled((prev) => {
+                  const next = !prev;
+                  // short test buzz on enable to satisfy user gesture requirement
+                  if (next) vibrateOnce();
+                  return next;
+                });
+              }}
+              disabled={!supported}
+              style={toggleBtnStyle}
+            >
+              <span style={knobStyle} />
+            </button>
+          </div>
+
           <Link to="/report" className="btn-outline">Report Incident</Link>
         </RiskBodyCard>
       </section>
