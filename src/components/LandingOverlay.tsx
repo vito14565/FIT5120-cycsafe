@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import "./LandingOverlay.css";
-import landingIcon from "../assets/1D492DB6-072D-4DBB-AC96-2B28690347B7.PNG";
+import landingIcon from "../assets/CycSafe.png";
 
 type Props = {
   /** If true, force-show even if previously accepted. */
@@ -50,32 +50,36 @@ export default function LandingOverlay({ open, onClose }: Props) {
       className={`landing-overlay ${closing ? "fade-out" : "fade-in"}`}
       role="dialog"
       aria-modal="true"
-      aria-labelledby="landing-title"
+      aria-labelledby="landing-subtitle"
     >
       <div className="landing-content">
+        {/* 1) Logo */}
         <div className="landing-icon" aria-hidden="true">
           <img
             src={landingIcon}
             alt=""
-            style={{ width: 84, height: 84, objectFit: "contain", borderRadius: 12 }}
+            style={{ width: 105, height: 105, objectFit: "contain", borderRadius: 12 }}
           />
         </div>
 
-        <h1 id="landing-title" className="landing-brand">CycSafe</h1>
-        <p className="landing-subtitle">VIC Cycling Safety</p>
+        {/* 2) Subtitle */}
+        <p id="landing-subtitle" className="landing-subtitle">VIC Cycling Safety</p>
 
+        {/* 3) Intro */}
         <p className="landing-intro">
           <strong>Safety first, safety second, coolness third.</strong><br />
           So whether you’re cycling to work everyday or just want to bike around the park on weekends,
           we’ve got you covered! Welcome to CycSafe — our solution to keep you safe, aware, and on time.
         </p>
 
+        {/* 4) Features */}
         <ul className="landing-bullets" aria-label="Key features">
           <li>🟢 Real-time safety alerts</li>
           <li>🔵 Analytics based safe routing</li>
           <li>🟣 Melbourne Cycling Insights &amp; Awareness</li>
         </ul>
 
+        {/* Legal/notice */}
         <div className="landing-disclaimer">
           By continuing, you agree to our{" "}
           <a href="/terms" target="_blank" rel="noopener">Terms of Service</a> and{" "}
@@ -86,6 +90,7 @@ export default function LandingOverlay({ open, onClose }: Props) {
           </div>
         </div>
 
+        {/* 5) CTA */}
         <button className="landing-cta" onClick={accept} autoFocus>
           ✓ Please click here to Proceed
         </button>
