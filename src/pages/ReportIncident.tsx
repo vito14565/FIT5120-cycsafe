@@ -209,6 +209,8 @@ export default function ReportIncident() {
   const navigate = useNavigate();
   const [camOpen, setCamOpen] = useState(false);
 
+
+
   /* ====== 讀取首頁存的地址/座標，預填 + 同步監聽 ====== */
   useEffect(() => {
     try {

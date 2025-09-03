@@ -9,6 +9,7 @@ import QuickReportModal from "../components/QuickReportModal";
 import { timeFromNow } from "../lib/time";
 import { Link } from "react-router-dom";
 
+
 // assets
 import bellOutlineIcon from "../assets/bell-outline.svg";
 
@@ -291,6 +292,8 @@ export default function AlertsPage() {
     fetchAll(coordsRef.current.lat, coordsRef.current.lon);
   }, [fetchAll]);
 
+
+
   // Refresh on tab visibility
   useEffect(() => {
     const onVis = () => {
@@ -545,4 +548,5 @@ function getCategoryLabel(category: Category): string {
     case "SAFETY":  return "Safety";
     default:        return "Alerts";
   }
+  
 }
