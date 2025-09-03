@@ -7,12 +7,9 @@ import ReportIncident from "./pages/ReportIncident";
 import PlanRoutePage from "./pages/PlanRoutePage";
 import DataInsights from "./pages/DataInsights";
 import { startAlertsPolling, stopAlertsPolling } from "./services/alertsService";
-
-// ⬇️ NEW
-import AuthGate from "./components/AuthGate";
+import AuthGate from "./components/AuthGate"; // ⬅️ add this
 
 export default function App() {
-  // 啟動「Clusters + Weather」合併輪詢（寫入 cs.alerts.* 並廣播）
   useEffect(() => {
     startAlertsPolling();
     return () => stopAlertsPolling();
@@ -27,7 +24,6 @@ export default function App() {
           <Route path="/alerts" element={<AlertsPage />} />
           <Route path="/report" element={<ReportIncident />} />
           <Route path="/plan-route" element={<PlanRoutePage />} />
-          {/* insights route */}
           <Route path="/insights" element={<DataInsights />} />
         </Routes>
       </Router>

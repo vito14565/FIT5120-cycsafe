@@ -1,3 +1,4 @@
+// src/components/AuthGate.tsx
 import { useEffect, useMemo, useState } from "react";
 import "./AuthGate.css";
 import logo from "../assets/CycSafe.png";
@@ -5,7 +6,9 @@ import logo from "../assets/CycSafe.png";
 /**
  * Simple client-side access gate (demo-grade).
  * Credentials via Vite env:
- *   VITE_AUTH_ACCOUNT, VITE_AUTH_PASSWORD, (optional) VITE_AUTH_TTL_MS
+ *   VITE_AUTH_USERNAME (preferred) or VITE_AUTH_ACCOUNT (fallback)
+ *   VITE_AUTH_PASSWORD
+ *   optional: VITE_AUTH_TTL_MS
  *
  * On success, stores a short-lived session flag in localStorage ("cs.auth.v1").
  */
@@ -13,14 +16,16 @@ import logo from "../assets/CycSafe.png";
 const STORAGE_KEY = "cs.auth.v1";
 
 export default function AuthGate({ children }: { children: React.ReactNode }) {
-  const EXPECTED_ACCOUNT = String(import.meta.env.VITE_AUTH_ACCOUNT ?? "");
+  const EXPECTED_USERNAME = String(
+    import.meta.env.VITE_AUTH_USERNAME ?? import.meta.env.VITE_AUTH_ACCOUNT ?? ""
+  );
   const EXPECTED_PASSWORD = String(import.meta.env.VITE_AUTH_PASSWORD ?? "");
   const TTL_MS = Number(import.meta.env.VITE_AUTH_TTL_MS ?? 1000 * 60 * 60 * 12); // 12h default
 
   // If env missing → gate disabled (handy during local dev)
   const disabled = useMemo(
-    () => !EXPECTED_ACCOUNT || !EXPECTED_PASSWORD,
-    [EXPECTED_ACCOUNT, EXPECTED_PASSWORD]
+    () => !EXPECTED_USERNAME || !EXPECTED_PASSWORD,
+    [EXPECTED_USERNAME, EXPECTED_PASSWORD]
   );
 
   const [authed, setAuthed] = useState<boolean>(() => {
@@ -37,7 +42,7 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (disabled) {
       console.warn(
-        "[AuthGate] Missing VITE_AUTH_ACCOUNT or VITE_AUTH_PASSWORD. Gate is disabled."
+        "[AuthGate] Missing VITE_AUTH_USERNAME/VITE_AUTH_ACCOUNT or VITE_AUTH_PASSWORD. Gate is disabled."
       );
     }
   }, [disabled]);
@@ -46,8 +51,8 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
 
   return (
     <LockScreen
-      onSuccess={(account, password) => {
-        if (account === EXPECTED_ACCOUNT && password === EXPECTED_PASSWORD) {
+      onSuccess={(username, password) => {
+        if (username === EXPECTED_USERNAME && password === EXPECTED_PASSWORD) {
           try {
             localStorage.setItem(
               STORAGE_KEY,
@@ -63,8 +68,8 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
   );
 }
 
-function LockScreen({ onSuccess }: { onSuccess: (acc: string, pwd: string) => boolean }) {
-  const [acc, setAcc] = useState("");
+function LockScreen({ onSuccess }: { onSuccess: (user: string, pwd: string) => boolean }) {
+  const [user, setUser] = useState("");
   const [pwd, setPwd] = useState("");
   const [err, setErr] = useState<string | null>(null);
   const [showPwd, setShowPwd] = useState(false);
@@ -72,8 +77,8 @@ function LockScreen({ onSuccess }: { onSuccess: (acc: string, pwd: string) => bo
   function submit(e: React.FormEvent) {
     e.preventDefault();
     setErr(null);
-    const ok = onSuccess(acc.trim(), pwd);
-    if (!ok) setErr("Invalid account or password.");
+    const ok = onSuccess(user.trim(), pwd);
+    if (!ok) setErr("Invalid username or password.");
   }
 
   return (
@@ -85,14 +90,14 @@ function LockScreen({ onSuccess }: { onSuccess: (acc: string, pwd: string) => bo
 
         <form onSubmit={submit} className="auth-form">
           <label className="auth-label">
-            Account number
+            Username
             <input
               className="auth-input"
-              inputMode="numeric"
+              type="text"
               autoComplete="username"
-              value={acc}
-              onChange={(e) => setAcc(e.target.value)}
-              placeholder="e.g. 123456"
+              value={user}
+              onChange={(e) => setUser(e.target.value)}
+              placeholder="e.g. Abhishek"
               required
             />
           </label>
@@ -125,7 +130,6 @@ function LockScreen({ onSuccess }: { onSuccess: (acc: string, pwd: string) => bo
           <button type="submit" className="auth-cta">Unlock</button>
         </form>
 
-        
       </div>
     </div>
   );
