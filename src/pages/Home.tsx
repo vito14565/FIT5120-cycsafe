@@ -9,6 +9,10 @@ import FlatCard from "../components/FlatCard";
 import GeoPrompt, { type Coords } from "../components/GeoPrompt";
 import { submitQuickReport } from "./ReportIncident"; // Import the quick report function
 
+// ⬇️ NEW: use the landing overlay styles and top-left button image
+import "../components/landingOverlay.css";
+import landingIcon from "../assets/1D492DB6-072D-4DBB-AC96-2B28690347B7.PNG";
+
 import alertIcon from "../assets/alert.svg";
 import routeIcon from "../assets/route.svg";
 import insightIcon from "../assets/insight.svg";
@@ -109,6 +113,9 @@ export default function Home() {
   
   // Quick Report modal state
   const [showQuickReport, setShowQuickReport] = useState<boolean>(false);
+
+  // ⬇️ NEW: manual trigger for landing overlay (for the top-left button)
+  const [showLanding, setShowLanding] = useState(false);
 
   // de-dupe guard
   const lastFetchKeyRef = useRef<string>("");
@@ -485,8 +492,39 @@ export default function Home() {
     sessionStorage.setItem(LAST_PROMPT_TS_KEY, String(Date.now()));
   };
 
+  // ⬇️ NEW: top-left button to reopen landing overlay
+  const topLeftBtnStyle: React.CSSProperties = {
+    position: "fixed",
+    top: "calc(10px + env(safe-area-inset-top, 0px))",
+    left: "12px",
+    zIndex: 60,
+    width: 40,
+    height: 40,
+    borderRadius: 999,
+    border: "1px solid #e5e7eb",
+    background: "#fff",
+    display: "grid",
+    placeItems: "center",
+    boxShadow: "0 6px 14px rgba(0,0,0,0.08)",
+    cursor: "pointer"
+  };
+  const topLeftImgStyle: React.CSSProperties = {
+    width: 22, height: 22, objectFit: "contain", borderRadius: 4
+  };
+
   return (
     <main className="container has-fab">
+      {/* Reopen overlay button */}
+      <button
+        type="button"
+        style={topLeftBtnStyle}
+        onClick={() => setShowLanding(true)}
+        title="About CycSafe"
+        aria-label="Show welcome screen"
+      >
+        <img src={landingIcon} alt="" style={topLeftImgStyle} />
+      </button>
+
       <GeoPrompt open={geoOpen} onGotCoords={onGotCoords} onClose={onClosePrompt} />
 
       <section className="alert-card-wrapper">
@@ -565,6 +603,83 @@ export default function Home() {
         onClose={() => setShowQuickReport(false)}
         onSubmit={handleIncidentSubmit}
       />
+
+      {/* ⬇️ Landing overlay (inline component) */}
+      <LandingOverlayInline open={showLanding} onClose={() => setShowLanding(false)} />
     </main>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* Inline landing overlay component — uses ../components/landingOverlay.css */
+/* ------------------------------------------------------------------ */
+function LandingOverlayInline({ open, onClose }: { open?: boolean; onClose?: () => void }) {
+  const STORAGE_KEY = "cs.onboarded.v1";
+  const [visible, setVisible] = useState(false);
+  const [closing, setClosing] = useState(false);
+
+  // Auto-show on first load if not accepted
+  useEffect(() => {
+    const accepted = localStorage.getItem(STORAGE_KEY);
+    if (!accepted) setVisible(true);
+  }, []);
+
+  // Allow manual re-open from top-left button
+  useEffect(() => {
+    if (open) {
+      setClosing(false);
+      setVisible(true);
+    }
+  }, [open]);
+
+  const accept = () => {
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify({ acceptedAt: Date.now(), v: 1 })); } catch {}
+    setClosing(true);
+    setTimeout(() => { setVisible(false); onClose?.(); }, 320); // match CSS fade
+  };
+
+  if (!visible) return null;
+
+  return (
+    <div
+      className={`landing-overlay ${closing ? "fade-out" : "fade-in"}`}
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="landing-title"
+    >
+      <div className="landing-content">
+        {/* Replace the SVG with your imported PNG */}
+<div className="landing-icon" aria-hidden="true">
+  <img
+    src={landingIcon}
+    alt=""
+    style={{ width: 80, height: 80, objectFit: "contain", borderRadius: 8 }}
+  />
+</div>
+
+       
+        <p className="landing-subtitle">Melbourne Cycling Safety</p>
+
+        <ul className="landing-bullets" aria-label="Key features">
+          <li>🟢 Real-time safety alerts</li>
+          <li>🔵 AI-powered safe routing</li>
+          <li>🟣 Melbourne cycling insights</li>
+        </ul>
+
+        <div className="landing-disclaimer">
+          By continuing, you agree to our{" "}
+          <a href="/terms" target="_blank" rel="noopener">Terms of Service</a> and{" "}
+          <a href="/privacy" target="_blank" rel="noopener">Privacy Policy</a>. This app
+          processes location data locally for safety features only.
+          <div className="landing-small">
+            CycSafe uses publicly available government data. For emergencies, always call 000.
+          </div>
+        </div>
+
+        <button className="landing-cta" onClick={accept} autoFocus>
+          ✓ Accept Terms &amp; Continue
+        </button>
+      </div>
+    </div>
   );
 }
