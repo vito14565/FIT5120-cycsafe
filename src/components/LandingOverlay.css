@@ -38,17 +38,26 @@
 }
 
 .landing-icon {
-  width: 66px;
-  height: 66px;
+  width: 88px;
+  height: 88px;
   display: grid;
   place-items: center;
   margin: 0 auto 12px;
-  border-radius: 999px;
+  border-radius: 16px;
   background: rgba(255,255,255,0.08);
 }
 
 .landing-brand { font-size: 28px; font-weight: 800; margin: 6px 0 2px; letter-spacing: .2px; }
 .landing-subtitle { margin: 0 0 14px; color: #cbd5e1; font-size: 15px; }
+
+/* NEW: intro copy */
+.landing-intro {
+  margin: 10px auto 16px;
+  color: #e5e7eb;
+  font-size: 15px;
+  line-height: 1.55;
+  max-width: 520px;
+}
 
 .landing-bullets { list-style: none; padding: 0; margin: 14px 0 18px; color: #e2e8f0; text-align: left; }
 .landing-bullets li {

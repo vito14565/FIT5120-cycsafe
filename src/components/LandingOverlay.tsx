@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import "./LandingOverlay.css";
+import landingIcon from "../assets/1D492DB6-072D-4DBB-AC96-2B28690347B7.PNG";
 
 type Props = {
   /** If true, force-show even if previously accepted. */
@@ -53,18 +54,26 @@ export default function LandingOverlay({ open, onClose }: Props) {
     >
       <div className="landing-content">
         <div className="landing-icon" aria-hidden="true">
-          <svg width="44" height="44" viewBox="0 0 24 24" fill="none">
-            <path d="M3 11l18-8-8 18-2-7-8-3z" stroke="white" strokeWidth="1.6" />
-          </svg>
+          <img
+            src={landingIcon}
+            alt=""
+            style={{ width: 84, height: 84, objectFit: "contain", borderRadius: 12 }}
+          />
         </div>
 
         <h1 id="landing-title" className="landing-brand">CycSafe</h1>
-        <p className="landing-subtitle">Melbourne Cycling Safety</p>
+        <p className="landing-subtitle">VIC Cycling Safety</p>
+
+        <p className="landing-intro">
+          <strong>Safety first, safety second, coolness third.</strong><br />
+          So whether you’re cycling to work everyday or just want to bike around the park on weekends,
+          we’ve got you covered! Welcome to CycSafe — our solution to keep you safe, aware, and on time.
+        </p>
 
         <ul className="landing-bullets" aria-label="Key features">
           <li>🟢 Real-time safety alerts</li>
-          <li>🔵 AI-powered safe routing</li>
-          <li>🟣 Melbourne cycling insights</li>
+          <li>🔵 Analytics based safe routing</li>
+          <li>🟣 Melbourne Cycling Insights &amp; Awareness</li>
         </ul>
 
         <div className="landing-disclaimer">
@@ -78,7 +87,7 @@ export default function LandingOverlay({ open, onClose }: Props) {
         </div>
 
         <button className="landing-cta" onClick={accept} autoFocus>
-          ✓ Accept Terms &amp; Continue
+          ✓ Please click here to Proceed
         </button>
       </div>
     </div>

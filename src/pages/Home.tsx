@@ -9,7 +9,7 @@ import FlatCard from "../components/FlatCard";
 import GeoPrompt, { type Coords } from "../components/GeoPrompt";
 import { submitQuickReport } from "./ReportIncident"; // Import the quick report function
 
-// ⬇️ NEW: use the landing overlay styles and top-left button image
+// ⬇️ Landing overlay styles + top-left button image
 import "../components/landingOverlay.css";
 import landingIcon from "../assets/1D492DB6-072D-4DBB-AC96-2B28690347B7.PNG";
 
@@ -492,24 +492,24 @@ export default function Home() {
     sessionStorage.setItem(LAST_PROMPT_TS_KEY, String(Date.now()));
   };
 
-  // ⬇️ NEW: top-left button to reopen landing overlay
+  // ⬇️ Top-left button to reopen landing overlay (bigger now)
   const topLeftBtnStyle: React.CSSProperties = {
     position: "fixed",
     top: "calc(10px + env(safe-area-inset-top, 0px))",
     left: "12px",
     zIndex: 60,
-    width: 40,
-    height: 40,
-    borderRadius: 999,
+    width: 56,
+    height: 56,
+    borderRadius: 16,
     border: "1px solid #e5e7eb",
     background: "#fff",
     display: "grid",
     placeItems: "center",
-    boxShadow: "0 6px 14px rgba(0,0,0,0.08)",
+    boxShadow: "0 8px 18px rgba(0,0,0,0.10)",
     cursor: "pointer"
   };
   const topLeftImgStyle: React.CSSProperties = {
-    width: 22, height: 22, objectFit: "contain", borderRadius: 4
+    width: 36, height: 36, objectFit: "contain", borderRadius: 8
   };
 
   return (
@@ -604,7 +604,7 @@ export default function Home() {
         onSubmit={handleIncidentSubmit}
       />
 
-      {/* ⬇️ Landing overlay (inline component) */}
+      {/* Landing overlay (inline) */}
       <LandingOverlayInline open={showLanding} onClose={() => setShowLanding(false)} />
     </main>
   );
@@ -648,22 +648,28 @@ function LandingOverlayInline({ open, onClose }: { open?: boolean; onClose?: () 
       aria-labelledby="landing-title"
     >
       <div className="landing-content">
-        {/* Replace the SVG with your imported PNG */}
-<div className="landing-icon" aria-hidden="true">
-  <img
-    src={landingIcon}
-    alt=""
-    style={{ width: 80, height: 80, objectFit: "contain", borderRadius: 8 }}
-  />
-</div>
+        <div className="landing-icon" aria-hidden="true">
+          <img
+            src={landingIcon}
+            alt=""
+            style={{ width: 84, height: 84, objectFit: "contain", borderRadius: 12 }}
+          />
+        </div>
 
-       
-        <p className="landing-subtitle">Melbourne Cycling Safety</p>
+        <h1 id="landing-title" className="landing-brand">CycSafe</h1>
+        <p className="landing-subtitle">VIC Cycling Safety</p>
+
+        {/* NEW intro copy */}
+        <p className="landing-intro">
+          <strong>Safety first, safety second, coolness third.</strong><br />
+          So whether you’re cycling to work everyday or just want to bike around the park on weekends,
+          we’ve got you covered! Welcome to CycSafe — our solution to keep you safe, aware, and on time.
+        </p>
 
         <ul className="landing-bullets" aria-label="Key features">
           <li>🟢 Real-time safety alerts</li>
-          <li>🔵 AI-powered safe routing</li>
-          <li>🟣 Melbourne cycling insights</li>
+          <li>🔵 Analytics based safe routing</li>
+          <li>🟣 Melbourne Cycling Insights &amp; Awareness</li>
         </ul>
 
         <div className="landing-disclaimer">
@@ -677,7 +683,7 @@ function LandingOverlayInline({ open, onClose }: { open?: boolean; onClose?: () 
         </div>
 
         <button className="landing-cta" onClick={accept} autoFocus>
-          ✓ Accept Terms &amp; Continue
+          ✓ Please click here to Proceed
         </button>
       </div>
     </div>
