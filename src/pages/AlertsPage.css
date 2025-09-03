@@ -401,3 +401,43 @@
     gap: 1rem;
   }
 }
+
+/* ─────────────────────────────────────────────
+   CTA: Get Safe Route
+───────────────────────────────────────────── */
+.alerts-cta {
+  margin-top: -0.5rem;  /* tucks under the summary a bit */
+  margin-bottom: 0.5rem;
+}
+
+.get-route-btn {
+  display: block;
+  width: 100%;
+  height: 44px;
+  line-height: 44px;
+  text-align: center;
+  font-weight: 700;
+  border-radius: 999px;
+  border: 1px solid #0ea5e9;
+  background: linear-gradient(180deg, #38bdf8, #0ea5e9);
+  color: #fff;
+  text-decoration: none;
+  box-shadow: 0 6px 16px rgba(14, 165, 233, 0.25);
+  transition: transform 120ms ease, box-shadow 120ms ease, opacity 120ms ease;
+}
+
+.get-route-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 10px 22px rgba(14, 165, 233, 0.28);
+}
+
+.get-route-btn:active {
+  transform: translateY(0);
+}
+
+@media (max-width: 640px) {
+  .alerts-cta {
+    margin-top: 0.25rem;
+    margin-bottom: 0.75rem;
+  }
+}

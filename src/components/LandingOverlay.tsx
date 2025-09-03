@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import "./LandingOverlay.css";
-import landingIcon from "../assets/CycSafe.png";
+import landingIcon from "../assets/CycSafe.svg";
 
 type Props = {
   /** If true, force-show even if previously accepted. */
@@ -21,13 +21,23 @@ export default function LandingOverlay({ open, onClose }: Props) {
     if (!accepted) setVisible(true);
   }, []);
 
-  // Allow external force-open (top-left icon)
+  // Allow external force-open via prop
   useEffect(() => {
     if (open) {
       setClosing(false);
       setVisible(true);
     }
   }, [open]);
+
+  // Also allow external force-open via custom event
+  useEffect(() => {
+    const onOpen = () => {
+      setClosing(false);
+      setVisible(true);
+    };
+    window.addEventListener("cs:landing:open", onOpen);
+    return () => window.removeEventListener("cs:landing:open", onOpen);
+  }, []);
 
   function accept() {
     try {

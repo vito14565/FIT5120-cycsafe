@@ -7,6 +7,7 @@ import NotificationSettings, {
 import QuickReportButton from "../components/QuickReportButton";
 import QuickReportModal from "../components/QuickReportModal";
 import { timeFromNow } from "../lib/time";
+import { Link } from "react-router-dom";
 
 // assets
 import bellOutlineIcon from "../assets/bell-outline.svg";
@@ -380,6 +381,13 @@ export default function AlertsPage() {
           </div>
         </div>
       </section>
+
+      {/* CTA: Get Safe Route */}
+<div className="alerts-cta">
+  <Link to="/plan-route" className="get-route-btn">
+    Get Safe Route
+  </Link>
+</div>
 
       {/* ≤5 km list */}
       {loading && filteredAlerts.length === 0 ? (

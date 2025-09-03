@@ -1,7 +1,7 @@
 // src/components/AuthGate.tsx
 import { useEffect, useMemo, useState } from "react";
 import "./AuthGate.css";
-import logo from "../assets/CycSafe.png";
+import logo from "../assets/CycSafe.svg";
 
 /**
  * Simple client-side access gate (demo-grade).

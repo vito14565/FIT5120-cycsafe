@@ -1,5 +1,7 @@
+// src/pages/Home.tsx
 import { useEffect, useState, useCallback, useRef } from "react";
 import { Link } from "react-router-dom";
+
 import RiskHeaderCard from "../components/RiskHeaderCard";
 import RiskBodyCard from "../components/RiskBodyCard";
 import QuickReportButton from "../components/QuickReportButton";
@@ -7,11 +9,7 @@ import QuickReportModal from "../components/QuickReportModal";
 import "../components/AlertCardWrapper.css";
 import FlatCard from "../components/FlatCard";
 import GeoPrompt, { type Coords } from "../components/GeoPrompt";
-import { submitQuickReport } from "./ReportIncident"; // Import the quick report function
-
-// Landing overlay trigger + top-left button image
-import LandingOverlay from "../components/LandingOverlay";
-import landingIcon from "../assets/CycSafe.png";
+import { submitQuickReport } from "./ReportIncident";
 
 import alertIcon from "../assets/alert.svg";
 import routeIcon from "../assets/route.svg";
@@ -28,7 +26,7 @@ type RiskResponse = {
   lon?: number;
   weather?: Weather;
   atmosphere?: string;
-  accidentsNearby?: number; // backend crash count within r meters
+  accidentsNearby?: number;
 };
 
 const API =
@@ -36,19 +34,16 @@ const API =
   "https://dbetjhlyj7smwrgcptcozm6amq0ovept.lambda-url.ap-southeast-2.on.aws/";
 
 // ===== Tunables =====
-const PROMPT_INTERVAL_MS = 10 * 60 * 1000; // 10 minutes
+const PROMPT_INTERVAL_MS = 10 * 60 * 1000;
 const ADDRESS_KEY = "cs.address";
 const COORDS_KEY = "cs.coords";
 const PROMPTED_ONCE_KEY = "cs.loc.promptedOnce";
 const LAST_PROMPT_TS_KEY = "cs.loc.lastPromptTs";
-
-// 🔑 remember the last cell we reverse-geocoded so we don't geocode every poll
 const LAST_GEOCODE_CELL_KEY = "cs.loc.lastGeocodeCell";
 
-const FALLBACK = { lat: -37.8136, lon: 144.9631 }; // Melbourne CBD
-const RADIUS_M = 500; // our crash radius
-const SCAN_LIMIT = String(import.meta.env.VITE_CRASH_SCAN_LIMIT ?? "4000"); // keep modest in dev
-const FETCH_DEDUP_MS = 10_000; // don't refetch same rounded location within 10s
+const FALLBACK = { lat: -37.8136, lon: 144.9631 };
+const RADIUS_M = 500;
+const FETCH_DEDUP_MS = 10_000;
 
 // === Weather alert helpers ===
 type WeatherAlert = {
@@ -63,19 +58,17 @@ type WeatherAlert = {
   agoText?: string;
 };
 
-// ===== HAPTICS (inlined helper + UI) =====
 const HAPTICS_KEY = "cs.haptics.enabled";
 const canVibrate = () =>
   typeof navigator !== "undefined" &&
   "vibrate" in navigator &&
   typeof (navigator as any).vibrate === "function" &&
   typeof window !== "undefined" &&
-  window.isSecureContext; // HTTPS or localhost
+  window.isSecureContext;
 
 const vibrateOnce = () => (navigator as any).vibrate?.([160]);
 const vibrateTwice = () => (navigator as any).vibrate?.([160, 90, 160]);
 
-// ~110m lat cell; lon varies with cos(lat)
 function roundCell(lat: number, lon: number, p = 3) {
   const f = 10 ** p;
   const latc = Math.floor(lat * f) / f;
@@ -100,75 +93,41 @@ function removeWeatherAlert(clusterId: string) {
 
 export default function Home() {
   // ===== Display state =====
-  const [riskLevel, setRiskLevel] = useState<number>(0); // legacy %
+  const [riskLevel, setRiskLevel] = useState<number>(0);
   const [riskText, setRiskText] = useState<RiskText>("Low Risk");
   const [address, setAddress] = useState<string>("");
-  const [alertCount, setAlertCount] = useState<number>(0); // ← derive from cs.alerts.list
   const [crashCount, setCrashCount] = useState<number>(0);
   const [weather, setWeather] = useState<Weather | null>(null);
   const [atmosphere, setAtmosphere] = useState<string | undefined>(undefined);
 
   // dialog
   const [geoOpen, setGeoOpen] = useState<boolean>(false);
-  
-  // Quick Report modal state
   const [showQuickReport, setShowQuickReport] = useState<boolean>(false);
 
-  // NEW: manual trigger for landing overlay (top-left button)
-  const [showLanding, setShowLanding] = useState(false);
-
-  // de-dupe guard
-  const lastFetchKeyRef = useRef<string>("");
-  const lastFetchAtRef = useRef<number>(0);
-
-  // ===== Haptics state (persisted) =====
+  // Haptics
   const [hapticsEnabled, setHapticsEnabled] = useState<boolean>(() => {
-    try {
-      return localStorage.getItem(HAPTICS_KEY) === "1";
-    } catch { return false; }
+    try { return localStorage.getItem(HAPTICS_KEY) === "1"; } catch { return false; }
   });
   const prevRiskRef = useRef<RiskText | null>(null);
-  const initializedRef = useRef(false); // avoid buzzing on very first render
+  const initializedRef = useRef(false);
   const supported = canVibrate();
 
-  // Minimal pretty pill styles (no external CSS touched)
+  // Small UI styles
   const pillWrapStyle: React.CSSProperties = {
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: "10px",
-    padding: "10px 12px",
-    borderRadius: 12,
-    background: "#f4f6fb",
-    border: "1px solid rgba(0,0,0,0.05)",
-    marginBottom: 10
+    display: "flex", alignItems: "center", justifyContent: "space-between",
+    gap: "10px", padding: "10px 12px", borderRadius: 12,
+    background: "#f4f6fb", border: "1px solid rgba(0,0,0,0.05)", marginBottom: 10
   };
-  const pillNoteStyle: React.CSSProperties = {
-    fontSize: 12,
-    color: "#6b7280",
-    marginTop: 4
-  };
+  const pillNoteStyle: React.CSSProperties = { fontSize: 12, color: "#6b7280", marginTop: 4 };
   const toggleBtnStyle: React.CSSProperties = {
-    position: "relative",
-    width: 56,
-    height: 32,
-    borderRadius: 999,
+    position: "relative", width: 56, height: 32, borderRadius: 999,
     border: "1px solid rgba(0,0,0,0.1)",
     background: hapticsEnabled ? "linear-gradient(90deg,#22c55e,#16a34a)" : "#e5e7eb",
-    cursor: supported ? "pointer" : "not-allowed",
-    transition: "background 200ms ease",
-    outline: "none"
+    cursor: supported ? "pointer" : "not-allowed", transition: "background 200ms ease", outline: "none"
   };
   const knobStyle: React.CSSProperties = {
-    position: "absolute",
-    top: 3,
-    left: hapticsEnabled ? 28 : 3,
-    width: 26,
-    height: 26,
-    background: "#fff",
-    borderRadius: "50%",
-    boxShadow: "0 2px 6px rgba(0,0,0,0.15)",
-    transition: "left 180ms ease"
+    position: "absolute", top: 3, left: hapticsEnabled ? 28 : 3, width: 26, height: 26,
+    background: "#fff", borderRadius: "50%", boxShadow: "0 2px 6px rgba(0,0,0,0.15)", transition: "left 180ms ease"
   };
 
   const markPromptedNow = () => {
@@ -180,7 +139,6 @@ export default function Home() {
     return Date.now() - last >= PROMPT_INTERVAL_MS;
   };
 
-  // Write to localStorage + broadcast
   const broadcastAddressAndCoords = useCallback((addr: string, lat: number, lon: number) => {
     try {
       localStorage.setItem(ADDRESS_KEY, addr);
@@ -190,12 +148,10 @@ export default function Home() {
     } catch {}
   }, []);
 
-  // Reflect risk into weather alert list
   const publishWeatherFromRisk = useCallback(
     (rt: RiskText, addr: string, lat: number, lon: number, wx?: Weather) => {
       const cell = roundCell(lat, lon, 3);
       const clusterId = `weather#${cell}`;
-
       if (rt === "Low Risk") { removeWeatherAlert(clusterId); return; }
 
       const wind = wx?.windSpeed != null ? `~${Math.round(Number(wx.windSpeed))} m/s` : undefined;
@@ -210,33 +166,23 @@ export default function Home() {
       const ttlMin = rt === "High Risk" ? 30 : 20;
 
       const alert: WeatherAlert = {
-        clusterId,
-        incidentType: "severe_weather",
-        description: desc,
-        severity: sev,
-        expiresAt: Math.floor(Date.now() / 1000) + ttlMin * 60,
-        ackable: false,
-        photoUrls: [],
-        address: addr,
-        agoText: "0 minutes ago",
+        clusterId, incidentType: "severe_weather", description: desc, severity: sev,
+        expiresAt: Math.floor(Date.now() / 1000) + ttlMin * 60, ackable: false,
+        photoUrls: [], address: addr, agoText: "0 minutes ago",
       };
       upsertWeatherAlert(alert);
     },
     []
   );
 
-  // Decide when to reverse-geocode (per ~0.001° cell)
   const shouldGeocode = (lat: number, lon: number) => {
     try {
       const cell = roundCell(lat, lon, 3);
       const last = sessionStorage.getItem(LAST_GEOCODE_CELL_KEY);
       return cell !== last;
-    } catch {
-      return true;
-    }
+    } catch { return true; }
   };
 
-  // Raw fetch (optionally request reverse geocode)
   const fetchRisk = useCallback(
     async (lat: number, lon: number, geocodeNow = false) => {
       try {
@@ -244,18 +190,15 @@ export default function Home() {
         url.searchParams.set("lat", String(lat));
         url.searchParams.set("lon", String(lon));
         url.searchParams.set("r", String(RADIUS_M));
-        url.searchParams.set("limit", String(import.meta.env.VITE_CRASH_SCAN_LIMIT ?? "6000")); // set 6000 in .env
+        url.searchParams.set("limit", String(import.meta.env.VITE_CRASH_SCAN_LIMIT ?? "6000"));
         url.searchParams.set("geocode", geocodeNow ? "1" : "0");
 
         const res = await fetch(url.toString(), { cache: "no-store" });
         const text = await res.text();
-        if (!res.ok) {
-          throw new Error(`HTTP ${res.status}: ${text.slice(0, 200)}`);
-        }
+        if (!res.ok) throw new Error(`HTTP ${res.status}: ${text.slice(0, 200)}`);
 
         let data: RiskResponse;
-        try { data = JSON.parse(text); }
-        catch { throw new Error(`Bad JSON: ${text.slice(0, 200)}`); }
+        try { data = JSON.parse(text); } catch { throw new Error(`Bad JSON: ${text.slice(0, 200)}`); }
 
         const addr = data.address || `${lat.toFixed(5)}, ${lon.toFixed(5)}`;
         setRiskLevel(Math.round(data.risk || 0));
@@ -292,18 +235,17 @@ export default function Home() {
     [broadcastAddressAndCoords, publishWeatherFromRisk]
   );
 
-  // Guarded wrapper to avoid spamming Lambda with same coords repeatedly
+  const lastFetchKeyRef = useRef<string>("");
+  const lastFetchAtRef = useRef<number>(0);
+
   const fetchRiskGuarded = useCallback(
     async (lat: number, lon: number, forceGeocode = false) => {
       const key = `${lat.toFixed(5)},${lon.toFixed(5)}`;
       const now = Date.now();
-
       const geocodeNow = forceGeocode || shouldGeocode(lat, lon);
 
       if (!geocodeNow) {
-        if (lastFetchKeyRef.current === key && now - lastFetchAtRef.current < FETCH_DEDUP_MS) {
-          return; // skip duplicate fetch
-        }
+        if (lastFetchKeyRef.current === key && now - lastFetchAtRef.current < FETCH_DEDUP_MS) return;
       }
 
       lastFetchKeyRef.current = key;
@@ -313,37 +255,21 @@ export default function Home() {
     [fetchRisk]
   );
 
-  // Handle incident reporting submission
   const handleIncidentSubmit = async (
-    incidentType: string, 
+    incidentType: string,
     location: { lat: number; lon: number; address: string }
   ) => {
     try {
-      console.log("📝 Submitting quick report to IncidentReporting table:", {
-        incident_type: incidentType,
-        latitude: location.lat,
-        longitude: location.lon,
-        address: location.address,
-        timestamp: new Date().toISOString()
-      });
-
-      // Submit to IncidentReporting table using existing API
       await submitQuickReport(incidentType, location);
-      
-      console.log("✅ Quick report submitted successfully to database");
-      
     } catch (error) {
       console.error("❌ Failed to submit quick report to database:", error);
-      throw error; // Re-throw so the QuickReportModal can handle the error
+      throw error;
     }
   };
 
   // ===== First load =====
   useEffect(() => {
-    try {
-      const savedAddr = localStorage.getItem(ADDRESS_KEY);
-      if (savedAddr) setAddress(savedAddr);
-    } catch {}
+    try { const savedAddr = localStorage.getItem(ADDRESS_KEY); if (savedAddr) setAddress(savedAddr); } catch {}
 
     try {
       const saved = localStorage.getItem(COORDS_KEY);
@@ -364,7 +290,6 @@ export default function Home() {
       }).catch(() => undefined as any);
       if (perm?.state === "granted") {
         navigator.geolocation.getCurrentPosition(
-          // 🔥 First real GPS fix → force geocode for a human-readable name
           (pos) => fetchRiskGuarded(pos.coords.latitude, pos.coords.longitude, true),
           () => {},
           { enableHighAccuracy: true, timeout: 8000, maximumAge: 5000 }
@@ -383,7 +308,7 @@ export default function Home() {
     return () => window.removeEventListener("cs:prompt-geo", onPrompt);
   }, []);
 
-  // Refresh on focus (respect de-dupe; geocode only if entering new cell)
+  // Refresh on focus
   useEffect(() => {
     const onVisible = () => {
       if (document.visibilityState === "visible") {
@@ -402,148 +327,56 @@ export default function Home() {
     };
   }, [fetchRiskGuarded]);
 
-  // ===== Active alerts count (derive from list, stays fresh) =====
-  useEffect(() => {
-    const recompute = () => {
-      try {
-        const raw = JSON.parse(localStorage.getItem("cs.alerts.list") || "[]");
-        // If you want *incidents only*, uncomment the next line:
-        // const onlyIncidents = (Array.isArray(raw) ? raw : []).filter((x: any) => x?.incidentType !== "severe_weather");
-        // setAlertCount(onlyIncidents.length);
-        setAlertCount(Array.isArray(raw) ? raw.length : 0); // all alerts (weather + incidents)
-      } catch {
-        setAlertCount(0);
-      }
-    };
-
-    // initial compute
-    recompute();
-
-    // listen to service broadcasts
-    const onAlerts = () => recompute();
-    const onList = () => recompute();
-    window.addEventListener("cs:alerts", onAlerts);
-    window.addEventListener("cs:alerts:list", onList);
-
-    // cross-tab/localStorage sync
-    const onStorage = (e: StorageEvent) => {
-      if (e.key === "cs.alerts.list") recompute();
-    };
-    window.addEventListener("storage", onStorage);
-
-    return () => {
-      window.removeEventListener("cs:alerts", onAlerts);
-      window.removeEventListener("cs:alerts:list", onList);
-      window.removeEventListener("storage", onStorage);
-    };
-  }, []);
-
-  // ===== Haptics: fire only when risk CHANGES into Medium/High =====
+  // Haptics on risk change
   useEffect(() => {
     if (!hapticsEnabled || !supported) {
-      prevRiskRef.current = riskText; // keep tracking even if disabled
-      initializedRef.current = true;
-      return;
+      prevRiskRef.current = riskText; initializedRef.current = true; return;
     }
     if (document.visibilityState !== "visible") {
-      prevRiskRef.current = riskText;
-      initializedRef.current = true;
-      return; // don't buzz in background tab
+      prevRiskRef.current = riskText; initializedRef.current = true; return;
     }
-
     const prev = prevRiskRef.current;
     const now = riskText;
-
-    // Skip on very first run (avoid buzz on initial paint)
     if (!initializedRef.current) {
-      initializedRef.current = true;
-      prevRiskRef.current = now;
-      return;
+      initializedRef.current = true; prevRiskRef.current = now; return;
     }
-
-    const changed = prev !== now;
-    if (changed) {
-      if (now === "Medium Risk") {
-        vibrateOnce();
-      } else if (now === "High Risk") {
-        vibrateTwice();
-      }
+    if (prev !== now) {
+      if (now === "Medium Risk") vibrateOnce();
+      else if (now === "High Risk") vibrateTwice();
     }
-
     prevRiskRef.current = now;
   }, [riskText, hapticsEnabled, supported]);
 
-  // Persist toggle to localStorage
   useEffect(() => {
     try { localStorage.setItem(HAPTICS_KEY, hapticsEnabled ? "1" : "0"); } catch {}
   }, [hapticsEnabled]);
 
-  // GeoPrompt returns
-  const onGotCoords = (c: Coords) => {
-    setGeoOpen(false);
-    sessionStorage.setItem(PROMPTED_ONCE_KEY, "1");
-    sessionStorage.setItem(LAST_PROMPT_TS_KEY, String(Date.now()));
-    // User explicitly chose a new location → force geocode now
-    fetchRiskGuarded(c.lat, c.lon, true);
-  };
-  const onClosePrompt = () => {
-    setGeoOpen(false);
-    sessionStorage.setItem(PROMPTED_ONCE_KEY, "1");
-    sessionStorage.setItem(LAST_PROMPT_TS_KEY, String(Date.now()));
-  };
-
-  // Top-left button to reopen landing overlay (bigger on mobile)
-  const topLeftBtnStyle: React.CSSProperties = {
-    position: "fixed",
-    top: "calc(10px + env(safe-area-inset-top, 0px))",
-    left: "12px",
-    zIndex: 60,
-    width: 56,
-    height: 56,
-    borderRadius: 16,
-    border: "1px solid #e5e7eb",
-    background: "#fff",
-    display: "grid",
-    placeItems: "center",
-    boxShadow: "0 8px 18px rgba(0,0,0,0.10)",
-    cursor: "pointer"
-  };
-  const topLeftImgStyle: React.CSSProperties = {
-    width: 36, height: 36, objectFit: "contain", borderRadius: 8
-  };
-
   return (
     <main className="container has-fab">
-      {/* Reopen overlay button */}
-      <button
-        type="button"
-        style={topLeftBtnStyle}
-        onClick={() => setShowLanding(true)}
-        title="About CycSafe"
-        aria-label="Show welcome screen"
-      >
-        <img src={landingIcon} alt="" style={topLeftImgStyle} />
-      </button>
-
-      <GeoPrompt open={geoOpen} onGotCoords={onGotCoords} onClose={onClosePrompt} />
+      <GeoPrompt open={geoOpen} onGotCoords={(c: Coords) => {
+        setGeoOpen(false);
+        sessionStorage.setItem(PROMPTED_ONCE_KEY, "1");
+        sessionStorage.setItem(LAST_PROMPT_TS_KEY, String(Date.now()));
+        fetchRiskGuarded(c.lat, c.lon, true);
+      }} onClose={() => {
+        setGeoOpen(false);
+        sessionStorage.setItem(PROMPTED_ONCE_KEY, "1");
+        sessionStorage.setItem(LAST_PROMPT_TS_KEY, String(Date.now()));
+      }} />
 
       <section className="alert-card-wrapper">
         <RiskHeaderCard
           title="Safety Alerts"
           icon={<img src={alertIcon} alt="alert" />}
-          riskLevel={riskLevel}   // big % on the right
-          riskText={riskText}     // "Low/Medium/High Risk"
+          riskLevel={riskLevel}
+          riskText={riskText}
         />
         <RiskBodyCard actionLink="/alerts" actionText="View Details">
-
-          {/* Haptic alerts toggle (pretty pill) */}
           <div style={pillWrapStyle} aria-live="polite">
             <div style={{display: "flex", flexDirection: "column"}}>
               <strong style={{fontSize: 14, color: "#111827"}}>Haptic alerts</strong>
               <span style={pillNoteStyle}>
-                {supported
-                  ? "Vibrate on Medium/High risk (Android Chrome)."
-                  : "Not supported on this device/browser."}
+                {supported ? "Vibrate on Medium/High risk (Android Chrome)." : "Not supported on this device/browser."}
               </span>
             </div>
             <button
@@ -554,7 +387,6 @@ export default function Home() {
                 if (!supported) return;
                 setHapticsEnabled((prev) => {
                   const next = !prev;
-                  // short test buzz on enable to satisfy user gesture requirement
                   if (next) vibrateOnce();
                   return next;
                 });
@@ -594,18 +426,12 @@ export default function Home() {
         ]}
       />
 
-      {/* Quick Report Floating Action Button */}
       <QuickReportButton onClick={() => setShowQuickReport(true)} />
-
-      {/* Quick Report Modal */}
       <QuickReportModal
         isOpen={showQuickReport}
         onClose={() => setShowQuickReport(false)}
         onSubmit={handleIncidentSubmit}
       />
-
-      {/* Mount once so it can auto-show on first visit; `open` allows manual reopen */}
-      <LandingOverlay open={showLanding} onClose={() => setShowLanding(false)} />
     </main>
   );
 }
