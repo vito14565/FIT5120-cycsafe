@@ -296,9 +296,7 @@ export async function fetchVicIncidents(
 
   const weight: Record<Priority, number> = { CRITICAL: 3, HIGH: 2, MEDIUM: 1, LOW: 0 };
   sortAlerts(nearby, weight);
-  for (const k of Object.keys(within30) as Category[]) {
-    sortAlerts(within30[k], weight);
-  }
+  (Object.keys(within30) as Category[]).forEach((k) => sortAlerts(within30[k], weight));
 
   return { nearby, within30ByCategory: within30 };
 }

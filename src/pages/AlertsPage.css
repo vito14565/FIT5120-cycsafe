@@ -96,6 +96,25 @@
   gap: 1rem;
 }
 
+/* White info card when there are no ≤5km incidents */
+.no-incidents-card {
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  padding: 1rem 1.25rem;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+}
+.no-incidents-card h4 {
+  margin: 0 0 4px 0;
+  font-size: 1rem;
+  color: #0f172a;
+}
+.no-incidents-card p {
+  margin: 0;
+  color: #64748b;
+  font-size: 0.9rem;
+}
+
 /* ─────────────────────────────────────────────
    Nearby groups (5–30 km) — iOS-style stacks
 ───────────────────────────────────────────── */
@@ -121,40 +140,84 @@
   gap: 8px;
 }
 
+/* Header: make title text white as requested */
 .alerts-nearby-groups .group-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 8px 12px;
+  padding: 10px 12px;
   border-radius: 12px;
-  background: var(--group-bg, #f6f7f9);
-  font-weight: 600;
+  border: 0;
+  background: var(--group-bg, #4b5563);
+  cursor: pointer;
 }
-
-.alerts-nearby-groups .group-header.weather  { --group-bg: #eef6ff; }
-.alerts-nearby-groups .group-header.traffic  { --group-bg: #fff4ed; }
-.alerts-nearby-groups .group-header.infra    { --group-bg: #f3f7f0; }
-.alerts-nearby-groups .group-header.safety   { --group-bg: #fff2f2; }
-
-.alerts-nearby-groups .group-title {
+.alerts-nearby-groups .group-header .group-title {
+  color: #fff; /* title to white */
+  font-weight: 700;
   display: inline-flex;
-  gap: 8px;
   align-items: center;
-  color: #0f172a;
+  gap: 8px;
 }
 
-.alerts-nearby-groups .group-count {
-  background: rgba(0,0,0,0.06);
+.alerts-nearby-groups .group-header .group-count {
+  background: rgba(255,255,255,0.18);
   padding: 2px 8px;
   border-radius: 999px;
   font-size: 12px;
-  color: #334155;
+  color: #fff;
 }
+
+/* Keep different tones per category */
+.alerts-nearby-groups .group-header.weather  { --group-bg: #2563eb; }  /* blue-600 */
+.alerts-nearby-groups .group-header.traffic  { --group-bg: #ea580c; }  /* orange-600 */
+.alerts-nearby-groups .group-header.infra    { --group-bg: #16a34a; }  /* green-600 */
+.alerts-nearby-groups .group-header.safety   { --group-bg: #dc2626; }  /* red-600 */
 
 .alerts-nearby-groups .group-stack {
   position: relative;
   display: grid;
   gap: 10px;
+}
+
+/* Collapsed stack (click to expand) */
+.group-stack-collapsed {
+  position: relative;
+  height: 86px;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  cursor: pointer;
+  text-align: left;
+}
+.group-stack-collapsed .stack-layer {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 72px;
+  border-radius: 14px;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  box-shadow: 0 8px 18px rgba(2, 6, 23, 0.06);
+}
+.group-stack-collapsed .stack-layer.back { top: 14px; transform: scale(0.98); opacity: 0.65; }
+.group-stack-collapsed .stack-layer.mid  { top: 7px;  transform: scale(0.99); opacity: 0.82; }
+.group-stack-collapsed .stack-layer.front {
+  top: 0;
+  padding: 10px 14px;
+  display: grid;
+  align-content: center;
+  gap: 4px;
+}
+.group-stack-collapsed .stack-line-1 {
+  font-weight: 600;
+  color: #0f172a;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.group-stack-collapsed .stack-line-2 {
+  font-size: 12px;
+  color: #475569;
 }
 
 /* Slight lift on hover for a stacked feel */
