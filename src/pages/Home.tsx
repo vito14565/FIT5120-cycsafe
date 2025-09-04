@@ -100,6 +100,9 @@ export default function Home() {
   const [weather, setWeather] = useState<Weather | null>(null);
   const [atmosphere, setAtmosphere] = useState<string | undefined>(undefined);
 
+  // NEW: show skeleton on first load until first risk response comes back
+  const [riskLoading, setRiskLoading] = useState<boolean>(true);
+
   // dialog
   const [geoOpen, setGeoOpen] = useState<boolean>(false);
   const [showQuickReport, setShowQuickReport] = useState<boolean>(false);
@@ -230,6 +233,9 @@ export default function Home() {
         setWeather(null);
         setAtmosphere(undefined);
         try { window.dispatchEvent(new CustomEvent("cs:crash", { detail: { count: 0, radius: RADIUS_M } })); } catch {}
+      } finally {
+        // ✅ Hide skeleton as soon as the first attempt (success or fail) completes
+        setRiskLoading(false);
       }
     },
     [broadcastAddressAndCoords, publishWeatherFromRisk]
@@ -370,6 +376,7 @@ export default function Home() {
           icon={<img src={alertIcon} alt="alert" />}
           riskLevel={riskLevel}
           riskText={riskText}
+          loading={riskLoading}  
         />
         <RiskBodyCard actionLink="/alerts" actionText="View Details">
           <div style={pillWrapStyle} aria-live="polite">
