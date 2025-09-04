@@ -7,6 +7,8 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { useEffect, useState } from "react";
 import AlertTray from "./AlertTray";
 import brand from "../assets/CycSafe.svg";
+// 👇 Namespace import so it works whether the module exports named, default, or both
+import * as LB from "../services/LocationBus";
 
 export default function Header() {
   const navigate = useNavigate();
@@ -20,21 +22,30 @@ export default function Header() {
   const [alerts, setAlerts] = useState<any[]>([]);
   const [updatedLabel, setUpdatedLabel] = useState("Updated just now");
 
+  // Resolve the bus from either named or default export (handles both cases)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const Bus: any = (LB as any).LocationBus || (LB as any).default || LB;
+
   const keepIncidentOnly = (list: any[]) =>
-    (Array.isArray(list) ? list : []).filter(x => x?.incidentType !== "severe_weather");
+    (Array.isArray(list) ? list : []).filter((x) => x?.incidentType !== "severe_weather");
 
   useEffect(() => {
+    // 🔐 LocationBus is the single source of truth for address
     try {
-      const cached = localStorage.getItem("cs.address");
-      if (cached) setAddress(cached);
+      Bus.start();
+    } catch {}
+    // seed from current snapshot (if any)
+    try {
+      const snap = Bus.getSnapshot?.();
+      if (snap?.address) setAddress(snap.address);
     } catch {}
 
-    const onAddr = (e: Event) => {
-      const detail = (e as CustomEvent<string>).detail;
-      if (typeof detail === "string") setAddress(detail);
-    };
-    window.addEventListener("cs:address", onAddr);
+    // live updates
+    const off = Bus.subscribe?.((s: { address?: string | null }) => {
+      setAddress(s?.address || "");
+    });
 
+    // ===== Alerts/bell logic (unchanged) =====
     try {
       const raw = JSON.parse(localStorage.getItem("cs.alerts.list") || "[]");
       const onlyIncidents = keepIncidentOnly(raw);
@@ -72,7 +83,7 @@ export default function Header() {
     window.addEventListener("cs:bell", onBell);
 
     const onStorage = (e: StorageEvent) => {
-      if (e.key === "cs.address" && e.newValue) setAddress(e.newValue);
+      // ❌ we no longer listen for "cs.address" here — LocationBus owns address updates
       if (e.key === "cs.alerts.list" && e.newValue) {
         try {
           const raw = JSON.parse(e.newValue) || [];
@@ -93,16 +104,19 @@ export default function Header() {
     const tick = window.setInterval(bumpUpdatedLabel, 30_000);
 
     return () => {
-      window.removeEventListener("cs:address", onAddr);
+      off && off();
       window.removeEventListener("cs:alerts", onAlerts);
       window.removeEventListener("cs:alerts:list", onList);
       window.removeEventListener("cs:bell", onBell);
       window.removeEventListener("storage", onStorage);
       window.clearInterval(tick);
     };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  useEffect(() => { setOpenTray(false); }, [locationPath]);
+  useEffect(() => {
+    setOpenTray(false);
+  }, [locationPath]);
 
   const bumpUpdatedLabel = () => {
     const t = Number(localStorage.getItem("cs.alerts.updatedAt") || 0);
@@ -161,7 +175,7 @@ export default function Header() {
           className="icon-button bell-wrapper"
           aria-label="Notifications"
           onClick={() => {
-            setOpenTray(v => !v);
+            setOpenTray((v) => !v);
             window.dispatchEvent(new CustomEvent("cs:alerts:maybeChanged"));
           }}
           title="View alerts"

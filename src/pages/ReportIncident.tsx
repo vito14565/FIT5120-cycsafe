@@ -40,51 +40,43 @@ import CameraCaptureDialog from "../components/CameraCaptureDialog";
 import { createIncident, getUploadUrl } from "../lib/api";
 import type { CreateIncidentPayload } from "../lib/api";
 
+/* 🔗 LocationBus: single source of truth for address + coords */
+import * as LB from "../services/LocationBus";
+// Resolve bus whether it's a named or default export
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const Bus: any = (LB as any).LocationBus || (LB as any).default || LB;
+
 /* ====== Quick Report Helper Function ====== */
 export async function submitQuickReport(
   incidentType: string, 
   location: { lat: number; lon: number; address: string }
 ): Promise<void> {
-  // Map incident types to severity levels for quick reports
   const getSeverityFromType = (type: string): SeverityCode => {
     switch (type) {
-      case 'collision':
-        return 'critical';
-      case 'aggressive_driver':
-        return 'high';
-      case 'near_miss':
-        return 'medium';
-      case 'road_hazard':
-        return 'medium';
-      case 'poor_infrastructure':
-        return 'low';
+      case 'collision': return 'critical';
+      case 'aggressive_driver': return 'high';
+      case 'near_miss': return 'medium';
+      case 'road_hazard': return 'medium';
+      case 'poor_infrastructure': return 'low';
       case 'other':
-      default:
-        return 'medium';
+      default: return 'medium';
     }
   };
 
-  // Create payload with minimal required data
   const payload: CreateIncidentPayload = {
     Timestamp: new Date().toISOString(),
     Incident_severity: getSeverityFromType(incidentType),
     Incident_description: `Quick report: ${incidentTypes[incidentType as keyof typeof incidentTypes] || incidentType}`,
     Latitude: location.lat,
     Longitude: location.lon,
-    LGA: "", // Empty for quick reports
+    LGA: "",
     Verification: "pending",
-    Picture: [], // No photos for quick reports
+    Picture: [],
     Incident_type: incidentType,
     Incident_type_desc: incidentTypes[incidentType as keyof typeof incidentTypes] || "Other",
   };
 
-  try {
-    await createIncident(payload);
-    console.log("✅ Quick report saved to IncidentReporting table");
-  } catch (error) {
-    console.error("❌ Failed to save quick report:", error);
-    throw error; // Re-throw so the UI can handle the error
-  }
+  await createIncident(payload);
 }
 
 /* ====== 事故類型定義 ====== */
@@ -113,10 +105,10 @@ const severityLabels: Record<SeverityCode, string> = {
   critical: "Critical - Emergency",
 };
 
-/* ====== 影像工具：統一轉成 JPEG、必要時縮圖壓縮到 <= 5MB ====== */
+/* ====== 影像工具 ====== */
 const MAX_FILES = 5;
 const MAX_MB = 5;
-const MAX_DIM = 2000; // 影像最長邊限制，避免過大
+const MAX_DIM = 2000;
 
 async function loadToImage(file: File): Promise<HTMLImageElement> {
   const url = URL.createObjectURL(file);
@@ -128,12 +120,11 @@ async function loadToImage(file: File): Promise<HTMLImageElement> {
       img.src = url;
     });
   } finally {
-    // 交給呼叫者決定是否要 revoke；這裡先不 revoke，避免尚未 draw 就釋放
+    // caller revokes
   }
 }
 
 async function normalizeToJpeg(file: File, maxDim = MAX_DIM, maxMB = MAX_MB): Promise<File> {
-  // 若已符合條件就直接返回
   const okType = ["image/jpeg", "image/png", "image/webp"].includes(file.type);
   const isHeicLike =
     /heic|heif/i.test(file.type) || file.name.toLowerCase().endsWith(".heic") || file.type === "";
@@ -158,7 +149,6 @@ async function normalizeToJpeg(file: File, maxDim = MAX_DIM, maxMB = MAX_MB): Pr
     const ctx = canvas.getContext("2d")!;
     ctx.drawImage(img, 0, 0, cw, ch);
 
-    // 先用 0.9，若超過大小再降低一次品質
     let blob: Blob | null = await new Promise((r) => canvas.toBlob(r, "image/jpeg", 0.9));
     if (!blob) {
       const dataUrl = canvas.toDataURL("image/jpeg", 0.9);
@@ -183,15 +173,15 @@ async function normalizeToJpeg(file: File, maxDim = MAX_DIM, maxMB = MAX_MB): Pr
 export default function ReportIncident() {
   const [incidentType, setIncidentType] = useState<string>("");
   const [severity, setSeverity] = useState<SeverityCode | "">("");
-  const [location, setLocation] = useState("");
+  const [location, setLocation] = useState(""); // 👈 always human-readable address for UI
 
   const [dateTime, setDateTime] = useState<Dayjs | null>(dayjs());
   const [description, setDescription] = useState("");
 
-  /* 照片（先上傳 S3 拿 key/URL） */
+  /* 影像 */
   const [photos, setPhotos] = useState<File[]>([]);
 
-  /* 目前座標（來自首頁或手動取得） */
+  /* Coords for backend (from LocationBus) */
   const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null);
   const [geoBusy, setGeoBusy] = useState(false);
   const [geoError, setGeoError] = useState<string | null>(null);
@@ -201,7 +191,7 @@ export default function ReportIncident() {
   const [submitting, setSubmitting] = useState(false);
   const [uploading, setUploading] = useState(false);
 
-  // Snackbar 狀態
+  // Snackbar
   const [snackOpen, setSnackOpen] = useState(false);
   const [snackMsg, setSnackMsg] = useState("");
   const [snackSeverity, setSnackSeverity] = useState<"success" | "error">("success");
@@ -209,40 +199,22 @@ export default function ReportIncident() {
   const navigate = useNavigate();
   const [camOpen, setCamOpen] = useState(false);
 
-
-
-  /* ====== 讀取首頁存的地址/座標，預填 + 同步監聽 ====== */
+  /* ====== Location: Subscribe to LocationBus (address + coords) ====== */
   useEffect(() => {
+    try { Bus.start?.(); } catch {}
+
     try {
-      const savedAddr = localStorage.getItem("cs.address");
-      if (savedAddr) setLocation((prev) => (prev ? prev : savedAddr));
+      const snap = Bus.getSnapshot?.();
+      if (snap?.address) setLocation((prev: string) => prev || snap.address);
+      if (snap?.coords) setCoords({ lat: snap.coords.lat, lng: snap.coords.lon });
+    } catch {}
 
-      const cs = localStorage.getItem("cs.coords");
-      if (cs) {
-        const { lat, lon } = JSON.parse(cs);
-        if (Number.isFinite(lat) && Number.isFinite(lon)) {
-          setCoords({ lat, lng: lon });
-        }
-      }
-    } catch {
-      // ignore
-    }
+    const off = Bus.subscribe?.((s: { address?: string | null; coords?: { lat: number; lon: number } | null }) => {
+      if (s?.address != null) setLocation(s.address || "");
+      if (s?.coords) setCoords({ lat: s.coords.lat, lng: s.coords.lon });
+    });
 
-    // 同步監聽（若首頁位置變動）
-    const onAddr = (e: Event) => {
-      const addr = (e as CustomEvent).detail as string | undefined;
-      if (addr) setLocation(addr);
-    };
-    const onCoords = (e: Event) => {
-      const d = (e as CustomEvent).detail as { lat?: number; lon?: number } | undefined;
-      if (d?.lat != null && d?.lon != null) setCoords({ lat: d.lat, lng: d.lon });
-    };
-    window.addEventListener("cs:address", onAddr);
-    window.addEventListener("cs:coords", onCoords);
-    return () => {
-      window.removeEventListener("cs:address", onAddr);
-      window.removeEventListener("cs:coords", onCoords);
-    };
+    return () => { off && off(); };
   }, []);
 
   /* 上傳處理 */
@@ -303,39 +275,24 @@ export default function ReportIncident() {
     setPhotos((prev) => prev.filter((_, i) => i !== idx));
   };
 
-  /* 取得定位（手動覆蓋） */
-  const getCurrentLocation = () => {
-    if (!("geolocation" in navigator)) {
-      setGeoError("Your browser does not support geolocation.");
-      return;
-    }
+  /* ✅ Use LocationBus for current location button */
+  const getCurrentLocation = async () => {
     setGeoBusy(true);
     setGeoError(null);
-
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        const { latitude, longitude } = pos.coords;
-        setCoords({ lat: latitude, lng: longitude });
-        setLocation(`${latitude.toFixed(6)}, ${longitude.toFixed(6)}`);
-        setGeoBusy(false);
-      },
-      (err) => {
-        if (err.code === err.PERMISSION_DENIED) {
-          setGeoError("Permission denied. You can enable location in your browser settings.");
-        } else if (err.code === err.POSITION_UNAVAILABLE) {
-          setGeoError("Location unavailable. Please try again later.");
-        } else if (err.code === err.TIMEOUT) {
-          setGeoError("Location request timed out. Please try again.");
-        } else {
-          setGeoError(err.message || "Failed to get location.");
-        }
-        setGeoBusy(false);
-      },
-      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
-    );
+    try {
+      Bus.start?.();
+      const first = await Bus.waitForFirstFix?.(10000);
+      const snap = Bus.getSnapshot?.();
+      if (first) setCoords({ lat: first.lat, lng: first.lon });
+      if (snap?.address) setLocation(snap.address);
+    } catch (err: any) {
+      setGeoError(err?.message || "Failed to get current location.");
+    } finally {
+      setGeoBusy(false);
+    }
   };
 
-  /* 若沒座標、但使用者填了 "lat, lng" 文字，嘗試解析 */
+  /* Still allow manual lat,lng text entry as a fallback for denied perms */
   const coordsFromFreeText = (): { lat: number; lng: number } | null => {
     const m = location.match(/(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)/);
     if (!m) return null;
@@ -365,30 +322,17 @@ export default function ReportIncident() {
     return Object.keys(newErrors).length === 0;
   };
 
-  /* 上傳所有照片到 S3，回傳 S3 key/URL 陣列（帶 header 失敗則回退不帶） */
   async function uploadAllPhotos(files: File[]): Promise<string[]> {
     if (files.length === 0) return [];
     setUploading(true);
     try {
       const urls: string[] = [];
       for (const raw of files) {
-        // 再保險一次：全部規範化後上傳
         const file = await normalizeToJpeg(raw, MAX_DIM, MAX_MB);
         const { url, key } = await getUploadUrl(file.name, file.type || "image/jpeg");
-
-        // 嘗試 1：帶 Content-Type
-        let put = await fetch(url, {
-          method: "PUT",
-          headers: { "Content-Type": file.type || "image/jpeg" },
-          body: file,
-        });
-
-        // 嘗試 2：有些預簽不允許帶 Content-Type；移除後重試
-        if (!put.ok) {
-          put = await fetch(url, { method: "PUT", body: file });
-        }
+        let put = await fetch(url, { method: "PUT", headers: { "Content-Type": file.type || "image/jpeg" }, body: file });
+        if (!put.ok) put = await fetch(url, { method: "PUT", body: file });
         if (!put.ok) throw new Error(`Upload failed: ${file.name} (${put.status})`);
-
         urls.push(key);
       }
       return urls;
@@ -397,7 +341,6 @@ export default function ReportIncident() {
     }
   }
 
-  // 開啟 Snackbar 的小工具
   const openSnack = (msg: string, severity: "success" | "error") => {
     setSnackMsg(msg);
     setSnackSeverity(severity);
@@ -408,8 +351,12 @@ export default function ReportIncident() {
   const handleSubmit = async () => {
     if (!validate()) return;
 
-    // 沒有 coords 就嘗試從 location 解析 "lat, lng"
+    // Prefer coords from LocationBus; fallback to parsing if user typed lat,lng
     let finalCoords = coords;
+    if (!finalCoords) {
+      const c = Bus.getCoords?.();
+      if (c) finalCoords = { lat: c.lat, lng: c.lon };
+    }
     if (!finalCoords) {
       finalCoords = coordsFromFreeText();
       if (finalCoords) setCoords(finalCoords);
@@ -423,8 +370,8 @@ export default function ReportIncident() {
         Timestamp: dateTime!.toDate().toISOString(),
         Incident_severity: severity as SeverityCode,
         Incident_description: description.trim(),
-        Latitude: finalCoords?.lat,
-        Longitude: finalCoords?.lng,
+        Latitude: finalCoords?.lat,      // ✅ coords to backend
+        Longitude: finalCoords?.lng,     // ✅ coords to backend
         LGA: "",
         Verification: "pending",
         Picture: pictureKeys,
@@ -434,11 +381,9 @@ export default function ReportIncident() {
 
       await createIncident(payload);
 
-      // ✅ 成功提示 + 延遲導頁
       openSnack("Report submitted successfully!", "success");
       setTimeout(() => navigate("/"), 1500);
 
-      // reset 表單
       setIncidentType("");
       setSeverity("");
       setLocation("");
@@ -454,7 +399,6 @@ export default function ReportIncident() {
     }
   };
 
-  // 相機回傳 File -> 直接規範化後加入列表
   const handleCapturedFile = async (file: File) => {
     try {
       const normalized = await normalizeToJpeg(file, MAX_DIM, MAX_MB);
@@ -497,7 +441,7 @@ export default function ReportIncident() {
           {errors.incidentType && <span style={{ color: "red", fontSize: "0.8rem" }}>{errors.incidentType}</span>}
         </FormControl>
 
-        {/* Location */}
+        {/* Location (address for UI) */}
         <label className="form-label">Location *</label>
         <TextField
           fullWidth
@@ -527,9 +471,17 @@ export default function ReportIncident() {
           }}
           sx={{ backgroundColor: "#fff", borderRadius: "6px", "& fieldset": { borderColor: "#ddd" } }}
         />
-        {coords && (
+
+        {/* Show Address (primary) with coords in title */}
+        {(coords || location) && (
           <Box sx={{ mt: 0.5 }}>
-            <Chip size="small" label={`Using current location • ${coords.lat.toFixed(4)}, ${coords.lng.toFixed(4)}`} variant="outlined" color="primary" />
+            <Chip
+              size="small"
+              variant="outlined"
+              color="primary"
+              label={`Using current location • ${location || "Locating…"}`}
+              title={coords ? `${coords.lat.toFixed(5)}, ${coords.lng.toFixed(5)}` : ""}
+            />
           </Box>
         )}
 
@@ -610,11 +562,11 @@ export default function ReportIncident() {
           Photo Evidence (Optional)
         </label>
 
-        {/* 隱藏 input：Gallery 與 Camera */}
+        {/* Inputs for Gallery/Camera */}
         <input id="gallery-input" type="file" accept="image/jpeg,image/png,image/webp" multiple onChange={onBrowse} style={{ display: "none" }} />
         <input id="camera-input" type="file" accept="image/*" capture="environment" onChange={onBrowse} style={{ display: "none" }} />
 
-        {/* 上傳卡片 */}
+        {/* Upload Card */}
         <Box
           onDragOver={(e) => e.preventDefault()}
           onDrop={onDrop}
@@ -656,7 +608,7 @@ export default function ReportIncident() {
           {errors.photo && <Box sx={{ mt: 1, color: "red", fontSize: 12 }}>{errors.photo}</Box>}
         </Box>
 
-        {/* 縮圖預覽 */}
+        {/* Thumbs */}
         {photos.length > 0 && (
           <Box sx={{ mt: 1.5, display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(96px, 1fr))", gap: 1 }}>
             {photos.map((file, idx) => {
@@ -680,7 +632,7 @@ export default function ReportIncident() {
           </Box>
         )}
 
-        {/* 上傳進度 */}
+        {/* Progress */}
         {(uploading || submitting) && (
           <Box sx={{ mt: 2 }}>
             <LinearProgress />
@@ -712,7 +664,7 @@ export default function ReportIncident() {
       {/* 相機元件 */}
       <CameraCaptureDialog open={camOpen} onClose={() => setCamOpen(false)} onCaptured={handleCapturedFile} />
 
-      {/* Snackbar：成功 / 錯誤提示 */}
+      {/* Snackbar */}
       <Snackbar
         open={snackOpen}
         autoHideDuration={2000}
