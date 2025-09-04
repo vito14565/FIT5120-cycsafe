@@ -7,8 +7,8 @@ interface AlertCardWrapperProps {
   riskLevel: number;
   riskText: "Low Risk" | "Medium Risk" | "High Risk";
   details: string;
-  actionText?: string;        // ✅ 可選
-  actionLink?: string;        // ✅ 可選
+  actionText?: string;        // optional
+  actionLink?: string;        // optional
   icon?: React.ReactNode;
   children?: React.ReactNode;
 }
@@ -31,7 +31,7 @@ export default function AlertCardWrapper({
         riskText={riskText}
         icon={icon}
       />
-      {/* 直接把可選 props 往下傳；由子元件自行判斷是否渲染 */}
+      {/* Pass optional props through; child decides whether to render */}
       <RiskBodyCard
         details={details}
         actionText={actionText}

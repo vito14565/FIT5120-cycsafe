@@ -10,7 +10,7 @@
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
 }
 
-/* 左側 */
+/* Left column */
 .card-left {
   display: flex;
   align-items: center;
@@ -18,7 +18,7 @@
 }
 
 .icon-wrapper {
-  background: #f2f5ff; /* 淺藍背景 */
+  background: #f2f5ff; /* light blue background */
   border-radius: 50%;
   padding: 0.6rem;
   display: flex;
@@ -57,7 +57,7 @@
   color: #aaa;
 }
 
-/* ✅ 移除所有卡片內超連結底線 + 保持顏色繼承 */
+/* Remove underlines for inner links and inherit colors */
 .card a,
 .card-action,
 .card-links a,
@@ -67,7 +67,7 @@
   transition: color 0.2s ease;
 }
 
-/* 右側 Action */
+/* Right action */
 .card-action {
   font-size: 0.9rem;
   color: #333;
@@ -76,7 +76,7 @@
   font-weight: 500;
 }
 
-/* ✅ hover 統一：變藍色、不加底線 */
+/* Hover style: blue text, no underline */
 .card a:hover,
 .card-action:hover,
 .card-links a:hover {

@@ -7,6 +7,6 @@
   stroke-linecap="round"
   stroke-linejoin="round"
 >
-  <!-- 外框紙飛機 -->
+  <!-- outline paper plane -->
   <path d="M22 2L15 22L11 13L2 9L22 2Z"></path>
 </svg>

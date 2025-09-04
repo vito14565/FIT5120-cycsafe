@@ -33,7 +33,7 @@ import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
 import { DateTimePicker } from "@mui/x-date-pickers/DateTimePicker";
 
-/* 相機對話框 */
+/* Camera dialog */
 import CameraCaptureDialog from "../components/CameraCaptureDialog";
 
 /* API */
@@ -79,7 +79,7 @@ export async function submitQuickReport(
   await createIncident(payload);
 }
 
-/* ====== 事故類型定義 ====== */
+/* ====== Incident type dictionary ====== */
 const incidentTypes = {
   "near-miss": "Near Miss",
   "collision": "Collision",
@@ -90,7 +90,7 @@ const incidentTypes = {
   "other": "Other"
 };
 
-/* ====== 顏色與文字對照表 ====== */
+/* ====== Severity color and labels ====== */
 type SeverityCode = "low" | "medium" | "high" | "critical";
 const severityColors: Record<SeverityCode, string> = {
   low: "green",
@@ -105,7 +105,7 @@ const severityLabels: Record<SeverityCode, string> = {
   critical: "Critical - Emergency",
 };
 
-/* ====== 影像工具 ====== */
+/* ====== Image utilities ====== */
 const MAX_FILES = 5;
 const MAX_MB = 5;
 const MAX_DIM = 2000;
@@ -169,7 +169,7 @@ async function normalizeToJpeg(file: File, maxDim = MAX_DIM, maxMB = MAX_MB): Pr
   }
 }
 
-/* ====== 主頁面 ====== */
+/* ====== Page component ====== */
 export default function ReportIncident() {
   const [incidentType, setIncidentType] = useState<string>("");
   const [severity, setSeverity] = useState<SeverityCode | "">("");
@@ -178,7 +178,7 @@ export default function ReportIncident() {
   const [dateTime, setDateTime] = useState<Dayjs | null>(dayjs());
   const [description, setDescription] = useState("");
 
-  /* 影像 */
+  /* Photos */
   const [photos, setPhotos] = useState<File[]>([]);
 
   /* Coords for backend (from LocationBus) */
@@ -186,7 +186,7 @@ export default function ReportIncident() {
   const [geoBusy, setGeoBusy] = useState(false);
   const [geoError, setGeoError] = useState<string | null>(null);
 
-  /* UI 狀態 */
+  /* UI state */
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -217,7 +217,7 @@ export default function ReportIncident() {
     return () => { off && off(); };
   }, []);
 
-  /* 上傳處理 */
+  /* Upload handling */
   const acceptTypes = useMemo(() => ["image/jpeg", "image/png", "image/webp"], []);
 
   const handleFiles = useCallback(
@@ -302,7 +302,7 @@ export default function ReportIncident() {
     return { lat, lng };
   };
 
-  /* 驗證 */
+  /* Validation */
   const validate = () => {
     const newErrors: Record<string, string> = {};
     if (!incidentType) newErrors.incidentType = "Please select an incident type.";
@@ -347,7 +347,7 @@ export default function ReportIncident() {
     setSnackOpen(true);
   };
 
-  /* 送出 */
+  /* Submit */
   const handleSubmit = async () => {
     if (!validate()) return;
 
@@ -661,7 +661,7 @@ export default function ReportIncident() {
         </div>
       </section>
 
-      {/* 相機元件 */}
+      {/* Camera component */}
       <CameraCaptureDialog open={camOpen} onClose={() => setCamOpen(false)} onCaptured={handleCapturedFile} />
 
       {/* Snackbar */}

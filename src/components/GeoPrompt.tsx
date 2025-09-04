@@ -89,7 +89,7 @@ export default function GeoPrompt({ open, onGotCoords, onClose }: Props) {
     <Dialog
       open={open}
       onClose={onClose}
-      // 關鍵：不要用預設 maxWidth，直接自訂 Paper 大小
+      // Important: do not use default maxWidth; customize Paper size instead
       fullWidth
       maxWidth={false}
       PaperProps={{

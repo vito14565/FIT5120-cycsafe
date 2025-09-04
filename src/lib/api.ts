@@ -1,4 +1,8 @@
 // src/lib/api.ts
+
+/**
+ * Payload for creating an incident via the backend Lambda.
+ */
 export type CreateIncidentPayload = {
   Timestamp: string;
   Incident_severity: "low" | "medium" | "high" | "critical";
@@ -7,19 +11,26 @@ export type CreateIncidentPayload = {
   Longitude?: number;
   LGA?: string;
   Verification?: "pending" | "verified" | "rejected";
-  Picture?: string[];               // S3 keys 或 URLs
-  Incident_type: string;            // 代碼，如 "ROAD_HAZARD"
-  Incident_type_desc?: string;      // 描述，如 "Road Hazard"
-  Contact?: string;                 // 可選，Email / Phone
+  /** S3 object keys or public URLs */
+  Picture?: string[];
+  /** Incident type code, e.g. "ROAD_HAZARD" */
+  Incident_type: string;
+  /** Human‑readable incident type description */
+  Incident_type_desc?: string;
+  /** Optional contact details (email or phone) */
+  Contact?: string;
 };
 
-// 從 .env 讀取
+// Read from .env via Vite
 const CREATE_URL = import.meta.env.VITE_API_CREATE_INCIDENT as string | undefined;
 const UPLOAD_URL = import.meta.env.VITE_API_UPLOAD_IMAGE as string | undefined;
 const BUCKET     = import.meta.env.VITE_UPLOAD_BUCKET as string | undefined;
 const PREFIX     = import.meta.env.VITE_UPLOAD_PREFIX as string | undefined;
 
-/** 建立事故事件 (呼叫 createIncident Lambda) */
+/**
+ * Create an incident (calls the createIncident Lambda).
+ * Throws if the request fails or the backend returns an error.
+ */
 export async function createIncident(payload: CreateIncidentPayload) {
   if (!CREATE_URL) throw new Error("Missing VITE_API_CREATE_INCIDENT");
 
@@ -36,7 +47,10 @@ export async function createIncident(payload: CreateIncidentPayload) {
   return data as { ok: true; INCIDENT_NO: string; Timestamp: string };
 }
 
-/** 取得 S3 上傳 URL（由 incidentImageUploadUrl Lambda 回傳） */
+/**
+ * Request a pre‑signed S3 upload URL from the backend.
+ * Returns the signed PUT URL and the resulting object key.
+ */
 export async function getUploadUrl(filename: string, contentType: string) {
   if (!UPLOAD_URL) throw new Error("Missing VITE_API_UPLOAD_IMAGE");
 
@@ -56,6 +70,6 @@ export async function getUploadUrl(filename: string, contentType: string) {
     throw new Error(data?.message || "Failed to get upload URL");
   }
 
-  // 例如 { ok:true, url: <signed PUT url>, key: "incidents/2025/0827/xxx.jpg" }
+  // Example: { ok:true, url: <signed PUT url>, key: "incidents/2025/0827/xxx.jpg" }
   return data as { ok: true; url: string; key: string };
 }

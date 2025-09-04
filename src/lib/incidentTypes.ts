@@ -1,6 +1,6 @@
 // src/incidentTypes.ts
 
-/** 標準代碼（寫入 DynamoDB 的值） */
+/** Standard codes (values written to the database) */
 export type IncidentTypeCode =
   | "COLLISION"
   | "NEAR MISS"
@@ -11,7 +11,7 @@ export type IncidentTypeCode =
   | "HARASSMENT"
   | "OTHER";
 
-/** 代碼 → 前端顯示用 label / color */
+/** Code → UI label and color */
 export const INCIDENT_TYPES: {
   code: IncidentTypeCode;
   label: string;
@@ -27,12 +27,12 @@ export const INCIDENT_TYPES: {
   { code: "OTHER",             label: "Other",                  color: "darkgray" },
 ];
 
-/** 根據代碼找 meta 資訊 */
+/** Find type metadata by code */
 export function findIncidentType(code?: string) {
   return INCIDENT_TYPES.find((t) => t.code === code);
 }
 
-/** 只取 label（常用於 DynamoDB 寫入 Incident_type_desc） */
+/** Return the label only (useful for Incident_type_desc) */
 export function getIncidentTypeLabel(code?: string): string {
   return findIncidentType(code)?.label ?? "Other";
 }

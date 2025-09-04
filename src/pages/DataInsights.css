@@ -5,7 +5,7 @@
   padding: 0 1rem;
 }
 
-/* ================= Stats Grid (上面四個卡片) ================= */
+/* ================= Stats Grid (top four cards) ================= */
 .stats-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
@@ -38,7 +38,7 @@
   font-size: 0.8rem;
 }
 
-/* 顏色分類 */
+/* Color variants */
 .stat-card.red h3 { color: #dc2626; }
 .stat-card.orange h3 { color: #f97316; }
 .stat-card.green h3 { color: #16a34a; }
@@ -64,13 +64,13 @@
   gap: 0.5rem;
 }
 
-/* 標題小圖示 (SVG icons) */
+/* Title icons (SVG) */
 .section-icon {
   width: 18px;
   height: 18px;
   object-fit: contain;
   flex-shrink: 0;
-  margin-top: -1px; /* 微調，對齊文字基線 */
+  margin-top: -1px; /* tweak to align baseline */
 }
 
 .insight-section ul {
@@ -156,7 +156,7 @@
   justify-self: start;
 }
 
-/* 不同 infrastructure 的顏色 */
+/* Infrastructure color variants */
 .infra-badge.excellent { background: #e6f9ec; color: #16a34a; }
 .infra-badge.good { background: #e6f0ff; color: #2563eb; }
 .infra-badge.fair { background: #fff8e6; color: #f59e0b; }
@@ -183,7 +183,7 @@
   border-bottom: none;
 }
 
-/* 左側文字區塊 */
+/* Left text column */
 .behavior-text {
   display: flex;
   flex-direction: column;
@@ -201,7 +201,7 @@
   color: #555;
 }
 
-/* 建議區塊 (盾牌 + 連結) */
+/* Recommendation block (shield + link) */
 .pattern-action {
   display: flex;
   align-items: center;
@@ -219,17 +219,17 @@
   text-decoration: underline;
 }
 
-/* 盾牌 icon 永遠跟隨文字顏色 */
+/* Shield icon follows text color */
 .action-icon {
   width: 14px;
   height: 14px;
   object-fit: contain;
   flex-shrink: 0;
-  fill: currentColor;   /* ✅ 對 <path fill> 生效 */
-  stroke: currentColor; /* ✅ 對 <path stroke> 生效 */
+  fill: currentColor;   /* applies to <path fill> */
+  stroke: currentColor; /* applies to <path stroke> */
 }
 
-/* Impact 標籤 */
+/* Impact badge */
 .impact {
   font-size: 0.8rem;
   font-weight: bold;
@@ -276,7 +276,7 @@
   color: #555;
 }
 
-/* 不同季節背景 + 顏色 */
+/* Season backgrounds and colors */
 .season.winter { background: #f0f5ff; color: #2563eb; }
 .season.spring { background: #ecfdf5; color: #059669; }
 .season.summer { background: #fff7ed; color: #ea580c; }
@@ -297,7 +297,7 @@
   margin: 0.5rem 0;
 }
 
-/* 📱 RWD 手機補強 */
+/* 📱 Mobile responsiveness */
 @media (max-width: 768px) {
   .insight-section.risk-time li {
     grid-template-columns: 1fr;
@@ -312,6 +312,6 @@
     width: fit-content;
   }
   .season-grid.horizontal {
-    grid-template-columns: 1fr; /* 小螢幕改單欄 */
+    grid-template-columns: 1fr; /* single column on small screens */
   }
 }

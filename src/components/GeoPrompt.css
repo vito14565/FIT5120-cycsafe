@@ -1,26 +1,26 @@
-/* 外層 Paper 做透明，真正的卡片在 .geo-dark-body */
+/* Make outer Paper transparent; real card is .geo-dark-body */
 .geo-dark-body {
   width: min(720px, 92vw);
   max-width: 92vw;
   background: #131826;
   color: #e8edf7;
   border-radius: 22px;
-  padding: 36px 28px 22px;         /* ↑ 上方多留空間給 pin */
+  padding: 36px 28px 22px;         /* extra top space for the pin */
   box-shadow: 0 18px 48px rgba(0,0,0,.35);
-  position: relative;              /* 讓 pin 絕對定位的參考點 */
-  overflow: visible;               /* ⭐ 允許 pin 超出卡片 */
+  position: relative;              /* anchor for absolutely positioned pin */
+  overflow: visible;               /* allow pin to extend beyond card */
 }
 
-/* 紅色小圖釘（置中、浮於卡片外） */
+/* Red pin (centered, floating above card) */
 .geo-top-pin {
   position: absolute;
-  top: -18px;                      /* 掛在外側 */
+  top: -18px;                      /* hang it outside */
   left: 50%;
   transform: translateX(-50%);
-  font-size: 26px;                 /* 放大到與設計一致 */
+  font-size: 26px;                 /* size to match design */
   line-height: 1;
-  z-index: 2;                      /* 壓過內容 */
-  pointer-events: none;            /* 不阻擋點擊 */
+  z-index: 2;                      /* above content */
+  pointer-events: none;            /* do not block clicks */
   filter: drop-shadow(0 2px 4px rgba(0,0,0,.35));
 }
 
@@ -39,7 +39,7 @@
   font-size: 16px;
 }
 
-/* 兩個選項卡 */
+/* Two option cards */
 .geo-choices {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -50,7 +50,7 @@
   background: #0f1421;
   border: 2px solid #2a3143;
   border-radius: 18px;
-  padding: 16px;                   /* 稍微放大 */
+  padding: 16px;                   /* slightly larger */
   text-align: left;
   cursor: pointer;
   transition: border-color .15s, box-shadow .15s, transform .08s;
@@ -73,7 +73,7 @@
 .geo-choice-text strong { display: block; color: #fff; }
 .geo-choice-text span { color: #b9c1d6; font-size: 14px; }
 
-/* CTA 按鈕 */
+/* CTA buttons */
 .geo-cta {
   margin-top: 8px;
   display: grid;
@@ -101,9 +101,9 @@
   color: #9aa3b2;
 }
 
-/* 桌面放大版（>= 1024px） */
+/* Desktop larger layout (>= 1024px) */
 @media (min-width: 1024px) {
-  .geo-dark-body { padding: 42px 34px 26px; } /* 再多一點頂部空間 */
+  .geo-dark-body { padding: 42px 34px 26px; } /* more top space */
   .geo-title { font-size: 32px; }
   .geo-sub { font-size: 18px; }
   .geo-choices { gap: 22px; }
@@ -111,7 +111,7 @@
   .geo-top-pin { top: -22px; font-size: 28px; }
 }
 
-/* 小螢幕細節 */
+/* Small-screen tweaks */
 @media (max-width: 420px) {
   .geo-dark-body { padding-top: 30px; }
   .geo-top-pin { top: -14px; font-size: 22px; }

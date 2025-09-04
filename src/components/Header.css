@@ -1,4 +1,4 @@
-/* ====== Header 基本 ====== */
+/* ====== Header base ====== */
 .header {
   background: #0a0a1a;
   color: #fff;
@@ -15,7 +15,7 @@
   gap: 1rem;
 }
 
-/* 返回 */
+/* Back button */
 .back-button {
   background: none;
   border: none;
@@ -52,7 +52,7 @@
   margin-left: -2px;
 }
 
-/* 標題與副標 */
+/* Title and subtitle */
 .title { margin: 0; font-size: 1.1rem; font-weight: 700; }
 
 .subtitle {
@@ -81,7 +81,7 @@
 }
 .icon:hover { opacity: 1; }
 
-/* ====== 鈴鐺與徽章 ====== */
+/* ====== Bell and badge ====== */
 .bell-wrapper {
   position: relative;
   background: none;
@@ -191,7 +191,7 @@
   to { opacity: 1; transform: translateY(0) scale(1); }
 }
 
-/* ====== 手機優化 (≤600px) ====== */
+/* ====== Mobile tweaks (≤600px) ====== */
 @media (max-width: 600px) {
   .header {
     flex-direction: column;

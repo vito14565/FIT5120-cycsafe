@@ -3,13 +3,16 @@ import { Dialog, DialogContent, Box, Button } from "@mui/material";
 import PhotoCameraIcon from "@mui/icons-material/PhotoCamera";
 
 export type CameraCaptureDialogProps = {
-  /** 是否開啟相機對話框 */
+  /** Whether the camera dialog is open */
   open: boolean;
-  /** 關閉對話框（不一定拍照） */
+  /** Close the dialog (may or may not capture) */
   onClose: () => void;
-  /** 拍照成功時回傳 File */
+  /** Callback when a photo is captured */
   onCaptured: (file: File) => void;
-  /** 若要覆寫標題/文案，可自己加更多 props */
+  /**
+   * Add more props if you want to customize copy or titles.
+   * Not currently used.
+   */
 };
 
 export default function CameraCaptureDialog({
@@ -109,7 +112,7 @@ export default function CameraCaptureDialog({
       try {
         await v.play();
       } catch {
-        // 某些瀏覽器需要互動才會播；UI已經在對話框
+        // Some browsers require user interaction; UI is already in a dialog
       }
       setCamReady(true);
     } catch (e: any) {
@@ -140,7 +143,7 @@ export default function CameraCaptureDialog({
     onClose();
   }
 
-  // 當 open 變 true 時初始化；關閉/卸載時釋放
+  // Initialize when opened; release camera when closed/unmounted
   useEffect(() => {
     if (open) {
       initCamera();

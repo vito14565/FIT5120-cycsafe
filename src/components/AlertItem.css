@@ -3,7 +3,7 @@
   border-radius: 12px;
   padding: 1rem 1rem 0.8rem;
   border: 1px solid transparent;
-  /* 為了大圖 Dialog 內邊距視覺均衡，卡片底部多留一點空間 */
+  /* Reserve extra bottom padding so the lightbox feels balanced */
 }
 
 /* Priority colorways (match Figma) */
@@ -69,7 +69,7 @@
 /* ===== Photos row (NEW) ===== */
 .alert-photos {
   margin-top: 6px;
-  margin-bottom: 6px;      /* 與 footer 保持間距 */
+  margin-bottom: 6px;      /* add spacing before footer */
   display: flex;
   gap: 8px;
   flex-wrap: wrap;

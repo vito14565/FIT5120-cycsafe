@@ -1,15 +1,24 @@
 // src/lib/geo.ts
+
+/**
+ * Convert meters to latitude delta (approx. 111.32 km per degree latitude).
+ */
 export function metersToLatDelta(meters: number): number {
-  // ~111.32 km per degree latitude
   return meters / 111_320;
 }
 
+/**
+ * Convert meters to longitude delta at a given latitude.
+ */
 export function metersToLonDelta(meters: number, atLatDeg: number): number {
   const latRad = (atLatDeg * Math.PI) / 180;
   const metersPerDeg = 111_320 * Math.cos(latRad);
   return meters / metersPerDeg;
 }
 
+/**
+ * Bounding box (min/max lat/lon) for a circle centered at lat/lon with given radius in meters.
+ */
 export function radiusBoundingBox(lat: number, lon: number, meters: number) {
   const dLat = metersToLatDelta(meters);
   const dLon = metersToLonDelta(meters, lat);
@@ -21,7 +30,9 @@ export function radiusBoundingBox(lat: number, lon: number, meters: number) {
   };
 }
 
-// Haversine distance in meters
+/**
+ * Haversine distance in meters between two latitude/longitude points.
+ */
 export function haversineMeters(
   a: { lat: number; lon: number },
   b: { lat: number; lon: number }
@@ -40,7 +51,11 @@ export function haversineMeters(
 
   return 2 * R * Math.asin(Math.min(1, Math.sqrt(h)));
 }
-// Simple reverse geocoder (BigDataCloud); swap to your backend or Nominatim if you prefer.
+
+/**
+ * Simple reverse geocoder using BigDataCloud.
+ * Replace with your backend or Nominatim if preferred.
+ */
 export async function reverseGeocode(lat: number, lng: number): Promise<string> {
   try {
     const r = await fetch(

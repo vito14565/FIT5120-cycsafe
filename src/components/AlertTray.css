@@ -1,10 +1,10 @@
 /* src/components/AlertTray.css */
 
-/* ───── Tray 外框 ───── */
+/* ───── Tray container ───── */
 .tray {
   position: absolute;
   right: 12px;
-  top: 56px;                 /* 視 Header 高度微調 */
+  top: 56px;                 /* adjust based on Header height */
   z-index: 1000;
   width: 520px;
   max-width: calc(100vw - 24px);
@@ -39,7 +39,7 @@
 
 .tray-list { list-style: none; margin: 0; padding: 6px 8px 10px; max-height: 60vh; overflow: auto; }
 
-/* ───── 卡片（含縮圖 + 內容） ───── */
+/* ───── Card (thumbnail + content) ───── */
 .tray-item {
   display: flex; gap: 12px;
   padding: 10px 12px; margin: 8px 4px;
@@ -47,33 +47,33 @@
   border: 1px solid #ececf3; border-radius: 10px;
 }
 
-/* 舊 priority 類別（可留可刪） */
+/* Legacy priority classes (kept for compatibility) */
 .tray-item.high     { border-color: #ffcdce; background: #fff4f4; }
 .tray-item.critical { border-color: #e78a8f; background: #ffeaea; }
 .tray-item.medium   { border-color: #ffdca3; background: #fff8e6; }
 .tray-item.low      { border-color: #cfe8d6; background: #f2fbf5; }
 
-/* ───── 縮圖區（改為支援多張縮圖） ───── */
+/* ───── Thumbnails area (supports multiple images) ───── */
 .tray-thumb {
   flex: 0 0 auto;
   border: 1px solid #e5e7eb;
   border-radius: 10px;
   background: #f8fafc;
-  padding: 6px;                /* 讓縮圖不要緊貼邊框 */
+  padding: 6px;                /* add breathing room around thumbnails */
   display: flex;
   align-items: center;
   justify-content: center;
-  min-width: 96px;             /* 至少保有卡片感，即使只有 1 張或沒有圖 */
+  min-width: 96px;             /* keep card feel even with 0/1 image */
 }
 
-/* 多張縮圖列 */
+/* Row of multiple thumbnails */
 .tray-thumbs-row {
   display: flex;
   gap: 8px;
   align-items: center;
 }
 
-/* 縮圖按鈕（可聚焦/可點擊） */
+/* Thumbnail button (focusable/clickable) */
 .tray-thumb-btn {
   border: none;
   padding: 0;
@@ -83,7 +83,7 @@
   line-height: 0;
 }
 
-/* 單張縮圖圖片尺寸（與 TSX 對齊） */
+/* Single thumbnail size (matches TSX) */
 .tray-thumb-img {
   width: 84px;
   height: 58px;
@@ -94,7 +94,7 @@
   transition: transform .18s ease, box-shadow .18s ease;
 }
 
-/* hover / focus 效果 */
+/* hover / focus effects */
 .tray-thumb-btn:hover .tray-thumb-img,
 .tray-thumb-btn:focus-visible .tray-thumb-img {
   transform: scale(1.04);
@@ -110,7 +110,7 @@
   padding: 8px 10px;
 }
 
-/* 內容區 */
+/* Content area */
 .tray-content { flex: 1 1 auto; min-width: 0; }
 .tray-row { display: flex; align-items: center; gap: 8px; }
 .tray-title-2 { font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -118,14 +118,14 @@
 .tray-desc.small { font-size: 12px; color: #666; }
 .meta-right { display: flex; gap: 12px; }
 
-/* 底部區（倒數／確認） */
+/* Footer row (countdown / confirm) */
 .tray-meta {
   display: flex; justify-content: space-between; align-items: center;
   color: #6b7280; font-size: 12px; margin-top: 4px;
 }
 .tray-countdown { font-size: 12px; color: #6b7280; }
 
-/* 操作按鈕 */
+/* Action button */
 .tray-cta {
   border: 1px solid #e5e7eb; border-radius: 10px;
   padding: 6px 10px; font-size: 13px; background: #fff;
@@ -133,20 +133,20 @@
 .tray-cta:hover { background: #f8fafc; }
 .tray-cta:disabled { opacity: .5; cursor: not-allowed; }
 
-/* 標籤（改成 severity 版本） */
+/* Badges (severity variants) */
 .tray-badge {
   font-size: 10px; font-weight: 800; padding: 2px 6px; border-radius: 6px;
-  color: #fff; background: #222;  /* 預設 */
+  color: #fff; background: #222;  /* default */
 }
-.tray-badge.sev-high     { background: #ef4444; }     /* 紅 */
-.tray-badge.sev-critical { background: #f87171; }     /* 淺紅 */
-.tray-badge.sev-medium   { background: #f59e0b; color: #000; } /* 橘 */
-.tray-badge.sev-low      { background: #10b981; }     /* 綠 */
+.tray-badge.sev-high     { background: #ef4444; }     /* red */
+.tray-badge.sev-critical { background: #f87171; }     /* light red */
+.tray-badge.sev-medium   { background: #f59e0b; color: #000; } /* orange */
+.tray-badge.sev-low      { background: #10b981; }     /* green */
 
-/* 底部時間戳 */
+/* Footer timestamp */
 .tray-foot { padding: 8px 12px; font-size: 11px; color: #6b7280; border-top: 1px solid #eee; text-align: right; }
 
-/* ───── 手機 (≤600px) ───── */
+/* ───── Mobile (≤600px) ───── */
 @media (max-width: 600px) {
   .tray {
     right: 0; left: 0;
@@ -158,11 +158,11 @@
   .tray-list { max-height: 72vh; }
   .tray-item { padding: 12px; }
   .tray-thumb { min-width: 92px; }
-  .tray-thumb-img { width: 78px; height: 52px; } /* 小螢幕縮小 */
+  .tray-thumb-img { width: 78px; height: 52px; } /* smaller on narrow screens */
   .tray-cta { padding: 10px 14px; font-size: 0.95rem; }
 }
 
-/* ───── 平板 (≥768px) ───── */
+/* ───── Tablet (≥768px) ───── */
 @media (min-width: 768px) {
   .tray {
     top: 60px; right: 16px;
@@ -173,7 +173,7 @@
   .tray-thumb-img { width: 84px; height: 58px; }
 }
 
-/* ───── 桌機 (≥1200px) ───── */
+/* ───── Desktop (≥1200px) ───── */
 @media (min-width: 1200px) {
   .tray {
     top: 64px; right: 20px;
@@ -186,19 +186,19 @@
   .tray-cta:hover { background: #f3f4f6; }
 }
 
-/* ───── 超寬 (≥1600px) ───── */
+/* ───── Ultra-wide (≥1600px) ───── */
 @media (min-width: 1600px) {
   .tray { right: 24px; width: 720px; max-width: min(720px, 70vw); }
   .tray-thumb { min-width: 120px; }
   .tray-thumb-img { width: 112px; height: 76px; }
 }
 
-/* ───── 捲動條 ───── */
+/* ───── Scrollbar styling ───── */
 .tray-list::-webkit-scrollbar { width: 10px; }
 .tray-list::-webkit-scrollbar-thumb { background: rgba(0,0,0,.15); border-radius: 999px; }
 .tray-list:hover::-webkit-scrollbar-thumb { background: rgba(0,0,0,.25); }
 
-/* ───── 深色模式 ───── */
+/* ───── Dark mode ───── */
 @media (prefers-color-scheme: dark) {
   .tray      { background: #0b0b10; color: #e5e7eb; border-color: #1f2430; box-shadow: 0 16px 40px rgba(0,0,0,.55); }
   .tray-header { background: #11131a; border-bottom-color: #202433; }
@@ -213,13 +213,13 @@
   .tray-foot   { background: #11131a; border-top-color: #202433; color: #a8b1c7; }
 }
 
-/* ───── 高對比 ───── */
+/* ───── High contrast ───── */
 @media (prefers-contrast: more) {
   .tray-item { border-color: #111 !important; }
   .tray-cta  { border-width: 2px; }
 }
 
-/* 動畫關閉（無障礙） */
+/* Disable animations for accessibility */
 @media (prefers-reduced-motion: reduce) {
   .tray { animation: none !important; }
 }

@@ -1,9 +1,9 @@
 
 /* ================== Plan Route Page ================== */
 .plan-route-page {
-  max-width: 900px;          /* ✅ 限制最大寬度 */
+  max-width: 900px;          /* limit max width */
   margin: 2rem auto;
-  padding: 0 1rem;           /* ✅ 保留左右內距避免貼邊 */
+  padding: 0 1rem;           /* left/right padding to avoid edge hugging */
   display: flex;
   flex-direction: column;
   gap: 2rem;
@@ -12,18 +12,18 @@
   box-sizing: border-box;
 }
 
-/* 🃏 通用卡片樣式 */
+/* Generic card */
 .card {
   background: #fff;
   border: 1px solid #ddd;
   border-radius: 10px;
   padding: 1.5rem;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
-  width: 100%;               /* ✅ 卡片跟隨容器寬度 */
-  box-sizing: border-box;    /* ✅ 避免 padding 撐爆 */
+  width: 100%;               /* cards follow container width */
+  box-sizing: border-box;    /* prevent padding from overflowing */
 }
 
-/* 🚴 Form 區塊 */
+/* Form area */
 .route-form h2 {
   display: flex;
   align-items: center;
@@ -81,7 +81,7 @@
   color: white;
 }
 
-/* 🚴 Routes 區塊 */
+/* Routes area */
 .recommended-routes h3 {
   margin-bottom: 1rem;
   font-size: 1.2rem;
@@ -91,7 +91,7 @@
 .route-card {
   padding: 1.2rem;
   margin-bottom: 1rem;
-  width: 100%;               /* ✅ 跟隨容器寬度 */
+  width: 100%;               /* follow container width */
   box-sizing: border-box;
 }
 
@@ -116,7 +116,7 @@
   font-weight: 600;
 }
 
-/* ✅ 顯示 km & mins (帶 icon) */
+/* Show km & mins with icons */
 .meta {
   display: flex;
   align-items: center;
@@ -137,7 +137,7 @@
   opacity: 0.8;
 }
 
-/* 🛡 安全/風險 Badge */
+/* Safety/Risk badges */
 .badges {
   display: flex;
   gap: 0.4rem;
@@ -317,7 +317,7 @@
   color: #333;
 }
 
-/* 📱 RWD: 手機直排 */
+/* 📱 Mobile layout */
 @media (max-width: 640px) {
   .route-header {
     flex-direction: column;

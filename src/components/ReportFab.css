@@ -1,4 +1,4 @@
-/* 容器：定位在右下角，含按鈕與小提示 */
+/* Container: fixed bottom-right, holds button and hint */
 .report-fab-wrap {
   position: fixed;
   right: max(16px, env(safe-area-inset-right, 16px));
@@ -9,7 +9,7 @@
   gap: 8px;
 }
 
-/* 小圓形 FAB（icon-only） */
+/* Small circular FAB (icon-only) */
 .report-fab-mini {
   width: 56px;
   height: 56px;
@@ -17,7 +17,7 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(180deg, #3b82f6, #1d4ed8); /* 藍色像你截圖 */
+  background: linear-gradient(180deg, #3b82f6, #1d4ed8); /* blue gradient */
   color: #fff;
   box-shadow: 0 12px 24px rgba(0,0,0,.28);
   text-decoration: none;
@@ -25,13 +25,13 @@
 }
 .report-fab-mini img { width: 22px; height: 22px; }
 
-/* 桌面放大一點、離邊遠一點 */
+/* Larger and further from edges on desktop */
 @media (min-width: 1024px) {
   .report-fab-mini { width: 64px; height: 64px; }
   .report-fab-wrap { right: 24px; bottom: 24px; }
 }
 
-/* 互動狀態 */
+/* Interaction states */
 @media (prefers-reduced-motion: no-preference) {
   .report-fab-mini { transition: transform .12s ease, box-shadow .12s ease; }
   .report-fab-mini:hover { transform: translateY(-1px); box-shadow: 0 14px 28px rgba(0,0,0,.32); }
@@ -42,7 +42,7 @@
   outline-offset: 3px;
 }
 
-/* 文字提示（hover/聚焦才顯示） */
+/* Text tooltip (shown on hover/focus) */
 .report-fab-tooltip {
   pointer-events: none;
   opacity: 0;
@@ -59,7 +59,7 @@
   opacity: 1;
 }
 
-/* 深色系統陰影稍重 */
+/* Slightly stronger shadow in dark mode */
 @media (prefers-color-scheme: dark) {
   .report-fab-mini { box-shadow: 0 12px 28px rgba(0,0,0,.45); }
 }

@@ -1,20 +1,20 @@
 .risk-body {
   display: grid;
   grid-template-columns: 1fr auto;
-  align-items: flex-start;   /* 左邊多行，頂對齊 */
+  align-items: flex-start;   /* top-align multi-line left column */
   gap: 16px;
   padding: 12px 16px;
   background: #fff;
 }
 
-/* 左邊：改成垂直排列 */
+/* Left column: vertical layout */
 .rb-left {
   display: flex;
   flex-direction: column;
-  gap: 8px;  /* 上下距離 */
+  gap: 8px;  /* vertical spacing */
 }
 
-/* 上面：紅點 + 小字 */
+/* Dot + helper text */
 .rb-details {
   display: inline-flex;
   align-items: center;
@@ -27,7 +27,7 @@
 }
 .rb-text { color: #6b7280; font-size: 13px; }
 
-/* 按鈕 */
+/* Button */
 .rb-action .btn-outline {
   font-size: 13px;
   font-weight: 600;
@@ -41,7 +41,7 @@
   background: #f9fafb;
 }
 
-/* 右邊：View Details */
+/* Right column: View Details */
 .rb-right {
   display: flex;
   align-items: center;
@@ -53,7 +53,7 @@
 }
 .rb-link:hover { text-decoration: underline; }
 
-/* =============== 小螢幕補強 (≤640px) =============== */
+/* =============== Small screens (≤640px) =============== */
 @media (max-width: 640px) {
   .risk-body {
     grid-template-columns: 1fr;

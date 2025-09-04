@@ -1,6 +1,7 @@
 // src/services/alertsService.ts
+// Polls backend cluster alerts, merges with local weather alerts, de-duplicates, and broadcasts updates.
 
-// ===== 型別（和 AlertTray / Header 對齊）=====
+// ===== Types (aligned with AlertTray / Header) =====
 export type AlertLite = {
   clusterId: string;
   incidentType: string;
@@ -13,9 +14,9 @@ export type AlertLite = {
   photoUrls?: string[];
   ackCount?: number;
 
-  // weather / system 專用欄位
+  // weather/system fields
   description?: string;
-  ackable?: boolean;                // 天氣請設 false
+  ackable?: boolean;                // set false for weather
 };
 
 export type AlertsPayload = {
@@ -24,7 +25,7 @@ export type AlertsPayload = {
   alerts: AlertLite[];
 };
 
-// 後端 list-alerts（Clusters）
+// Backend "list-alerts" (clusters)
 const LIST_URL =
   import.meta.env.VITE_LIST_ALERTS_URL ||
   "https://7wijeaz2y64ixyvovqkhjoysya0lksii.lambda-url.ap-southeast-2.on.aws/";
@@ -34,7 +35,7 @@ const REFRESH_MS = 60_000;
 let timer: number | undefined;
 let inflight: AbortController | null = null;
 
-// 綁同一個 handler，方便 removeEventListener
+// Bind a stable handler so we can removeEventListener cleanly
 const onMaybeChanged = () => { void fetchOnce(); };
 const onWeatherList  = () => { void fetchOnce(); };
 const onVisible = () => {
@@ -42,19 +43,19 @@ const onVisible = () => {
 };
 
 export function startAlertsPolling() {
-  // ✅ 先把任何舊的 interval / 監聽 / inflight 清乾淨，避免 abort 目前這次的抓取
+  // ✅ Clear any previous interval/listeners/inflight to avoid aborting this run
   stopAlertsPolling();
 
-  // ✅ 建立新的輪詢
+  // ✅ Create a fresh polling timer
   timer = window.setInterval(fetchOnce, REFRESH_MS);
 
-  // ✅ 註冊事件（可能變動時與回到前景時立即更新）
+  // ✅ Register events to refresh on potential changes and when tab becomes visible
   window.addEventListener("cs:alerts:maybeChanged", onMaybeChanged);
   window.addEventListener("cs:weather:list", onWeatherList);
   window.addEventListener("focus", onVisible);
   document.addEventListener("visibilitychange", onVisible);
 
-  // ✅ 最後再跑一次立即抓取（不會被 stopAlertsPolling() 立刻 abort）
+  // ✅ Kick off an immediate fetch (will not be aborted by the cleanup above)
   void fetchOnce();
 }
 
@@ -75,16 +76,16 @@ export function stopAlertsPolling() {
 
 async function fetchOnce() {
   try {
-    // 取消上一個尚未完成的請求
+    // Cancel any previous in-flight request
     if (inflight) inflight.abort();
     inflight = new AbortController();
 
-    // 1) 後端 clusters
+    // 1) Backend clusters
     const res = await fetch(LIST_URL, { cache: "no-store", signal: inflight.signal });
     const data: AlertsPayload = await res.json();
     const backend = Array.isArray(data?.alerts) ? data.alerts : [];
 
-    // 2) 本地天氣（Home.tsx 會寫入 localStorage 並 dispatch cs:weather:list）
+    // 2) Local weather (Home.tsx writes to localStorage and dispatches cs:weather:list)
     let weather: AlertLite[] = [];
     try {
       const raw = JSON.parse(localStorage.getItem("cs.weather.alerts") || "[]");
@@ -93,7 +94,7 @@ async function fetchOnce() {
       weather = [];
     }
 
-    // 3) 合併 + 過濾未過期 + 去重（同 clusterId 保留 expiresAt 較大的）
+    // 3) Merge + filter unexpired + de-duplicate (keep larger expiresAt per clusterId)
     const now = Math.floor(Date.now() / 1000);
     const mergedRaw: AlertLite[] = [...backend, ...weather].filter(
       a => Number(a?.expiresAt || 0) > now
@@ -114,10 +115,10 @@ async function fetchOnce() {
 
     const merged = Array.from(byId.values());
 
-    // 4) 排序（剩餘時間長的在上；也可換 lastReportAt）
+    // 4) Sort by remaining time descending (could switch to lastReportAt if available)
     merged.sort((x, y) => Number(y?.expiresAt || 0) - Number(x?.expiresAt || 0));
 
-    // 5) 寫入 localStorage + 廣播
+    // 5) Persist to localStorage + broadcast
     localStorage.setItem("cs.alerts.list", JSON.stringify(merged));
     localStorage.setItem("cs.alerts.total", String(merged.length));
     localStorage.setItem("cs.alerts.updatedAt", String(Date.now()));
@@ -125,7 +126,7 @@ async function fetchOnce() {
     window.dispatchEvent(new CustomEvent("cs:alerts", { detail: { total: merged.length } }));
     window.dispatchEvent(new CustomEvent("cs:alerts:list", { detail: { list: merged } }));
   } catch (e) {
-    if ((e as any)?.name === "AbortError") return; // 主動取消就忽略
+    if ((e as any)?.name === "AbortError") return; // ignore deliberate aborts
     console.error("load alerts failed", e);
   } finally {
     inflight = null;

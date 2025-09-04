@@ -6,8 +6,8 @@ interface FlatCardProps {
   title: string;
   subtitle: string;
   links?: { text: string; className?: string }[];
-  actionText: string;   // ✅ 改成必填，因為一定會顯示
-  actionLink: string;   // ✅ 改成必填，因為整張卡片要跳轉
+  actionText: string;   // required (always displayed)
+  actionLink: string;   // required (entire card navigates)
 }
 
 export default function FlatCard({
@@ -19,8 +19,8 @@ export default function FlatCard({
   actionLink,
 }: FlatCardProps) {
   return (
-    <Link to={actionLink} className="card flat"> {/* 整張卡片點擊 */}
-      {/* 左側 Icon + 標題 */}
+    <Link to={actionLink} className="card flat"> {/* whole card is clickable */}
+      {/* Left: icon + titles */}
       <div className="card-left">
         <div className="icon-wrapper">{icon}</div>
         <div>
@@ -39,7 +39,7 @@ export default function FlatCard({
         </div>
       </div>
 
-      {/* 右側 Action (文字仍然顯示) */}
+      {/* Right: action text */}
       <div className="card-action">{actionText} →</div>
     </Link>
   );

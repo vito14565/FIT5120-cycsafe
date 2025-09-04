@@ -6,10 +6,10 @@
   viewBox="0 0 40 40"
   fill="none"
 >
-  <!-- 淡藍色背景圓 -->
+  <!-- light blue background circle -->
   <circle cx="20" cy="20" r="20" fill="#E6F0FF"/>
   
-  <!-- 路線連接 -->
+  <!-- route path -->
   <path
     d="M12 25C16 20 24 20 28 15"
     stroke="#2563EB"
@@ -18,8 +18,8 @@
     stroke-linejoin="round"
   />
   
-  <!-- 起點 -->
+  <!-- start -->
   <circle cx="12" cy="25" r="3" fill="white" stroke="#2563EB" stroke-width="2"/>
-  <!-- 終點 -->
+  <!-- end -->
   <circle cx="28" cy="15" r="3" fill="white" stroke="#2563EB" stroke-width="2"/>
 </svg>

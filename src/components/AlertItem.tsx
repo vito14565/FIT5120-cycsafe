@@ -14,6 +14,9 @@ import warningIcon from "../assets/warning.svg";
 export type Priority = "CRITICAL" | "HIGH" | "MEDIUM" | "LOW";
 export type Category = "WEATHER" | "TRAFFIC" | "INFRA" | "SAFETY";
 
+/**
+ * Props for an alert card in lists (≤5 km and 5–30 km groups).
+ */
 interface AlertItemProps {
   title: string;
   description: string;
@@ -24,8 +27,8 @@ interface AlertItemProps {
   dismissable?: boolean;   // show ×
   onDismiss?: () => void;
 
-  /** 後端附加的 S3 簽名網址（短效），前端用來顯示縮圖/大圖 */
-  photoUrls?: string[];    // 👈 新增
+  /** Optional short‑lived signed URLs to show thumbnails and lightbox images */
+  photoUrls?: string[];
 }
 
 function iconFor(category: Category) {
@@ -47,12 +50,12 @@ export default function AlertItem({
   category,
   dismissable,
   onDismiss,
-  photoUrls = [], // 預設空陣列
+  photoUrls = [], // default to empty array
 }: AlertItemProps) {
   const p = priority.toLowerCase(); // "critical" | "high" | "medium" | "low"
   const icon = iconFor(category);
 
-  // Lightbox 狀態
+  // Lightbox state
   const [open, setOpen] = useState(false);
   const [index, setIndex] = useState(0);
 
@@ -73,7 +76,7 @@ export default function AlertItem({
     setIndex((i) => (i + 1) % photoUrls.length);
   }, [photoUrls.length, hasPhotos]);
 
-  // 鍵盤操作（Esc / ← / →）
+  // Keyboard shortcuts (Esc / ← / →)
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => {
@@ -109,7 +112,7 @@ export default function AlertItem({
 
       <p className="alert-description">{description}</p>
 
-      {/* 縮圖列 */}
+      {/* Thumbnails */}
       {hasPhotos && (
         <div className="alert-photos">
           {photoUrls.map((url, i) => (
@@ -126,7 +129,7 @@ export default function AlertItem({
                 className="alert-thumb"
                 loading="lazy"
                 onError={(e) => {
-                  // 簽名 URL 過期：追加 cache-buster 重載（簡單處理）
+                  // Signed URL expired: add cache-buster and retry
                   (e.currentTarget as HTMLImageElement).src = url + (url.includes("?") ? "&" : "?") + "t=" + Date.now();
                 }}
               />
@@ -140,7 +143,7 @@ export default function AlertItem({
         <span>{time}</span>
       </footer>
 
-      {/* 大圖 Lightbox */}
+      {/* Lightbox */}
       <Dialog
         open={open}
         onClose={() => setOpen(false)}
@@ -157,9 +160,9 @@ export default function AlertItem({
             minHeight: "60vh",
             padding: 16,
           }}
-          onClick={() => setOpen(false)} // 點背景關閉
+          onClick={() => setOpen(false)} // click backdrop to close
         >
-          {/* 左右切換 */}
+          {/* Prev/Next controls */}
           {photoUrls.length > 1 && (
             <>
               <IconButton
@@ -180,7 +183,7 @@ export default function AlertItem({
             </>
           )}
 
-          {/* 右上角關閉 */}
+          {/* Close button */}
           <IconButton
             onClick={(e) => { e.stopPropagation(); setOpen(false); }}
             sx={{ position: "absolute", right: 8, top: 8, color: "white" }}
@@ -189,13 +192,13 @@ export default function AlertItem({
             <CloseIcon />
           </IconButton>
 
-          {/* 大圖本體 */}
+          {/* Main image */}
           {hasPhotos && (
             <img
               src={photoUrls[index]}
               alt={`photo ${index + 1}`}
               style={{ maxWidth: "92vw", maxHeight: "82vh", objectFit: "contain", borderRadius: 8 }}
-              onClick={(e) => e.stopPropagation()} // 避免點到圖片就關閉
+              onClick={(e) => e.stopPropagation()} // avoid closing when clicking image
               onError={(e) => {
                 (e.currentTarget as HTMLImageElement).src =
                   photoUrls[index] + (photoUrls[index].includes("?") ? "&" : "?") + "t=" + Date.now();

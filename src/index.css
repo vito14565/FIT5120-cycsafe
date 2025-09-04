@@ -53,15 +53,15 @@ body {
 }
 
 /* ======================= */
-/* Links (全域設定超連結樣式) */
+/* Links (global link style) */
 /* ======================= */
 a {
-  text-decoration: none;  /* ❌ 移除底線 */
-  color: inherit;         /* ✅ 跟隨父層顏色 */
+  text-decoration: none;  /* remove underline */
+  color: inherit;         /* inherit parent color */
   transition: color 0.2s ease;
 }
 
 a:hover {
-  color: #3b82f6;         /* hover 時變藍色 */
-  text-decoration: none;  /* ❌ 不要底線 */
+  color: #3b82f6;         /* blue on hover */
+  text-decoration: none;  /* no underline */
 }

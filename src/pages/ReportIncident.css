@@ -1,11 +1,11 @@
-/* ================== 頁面容器 ================== */
+/* ================== Page container ================== */
 .report-page {
   max-width: 900px;
   margin: 2rem auto;
   padding: 0 1rem;
 }
 
-/* ================== 卡片 ================== */
+/* ================== Card ================== */
 .report-card {
   background: #fff;
   border: 1px solid #e5e7eb;
@@ -55,14 +55,14 @@
   display: block;
 }
 
-/* ================== 表單錯誤（通用） ================== */
+/* ================== Form error (generic) ================== */
 .error-text {
   color: #dc2626;
   font-size: 0.8rem;
   margin-top: 0.35rem;
 }
 
-/* ================== 匿名 Checkbox ================== */
+/* ================== Anonymous checkbox ================== */
 .MuiFormControlLabel-root {
   margin-top: 0.8rem;
   margin-bottom: 1rem;
@@ -120,7 +120,7 @@
   font-size: 0.8rem;
 }
 
-/* 縮圖格 */
+/* Thumbnails grid */
 .photo-grid {
   margin-top: 0.9rem;
   display: grid;
@@ -158,7 +158,7 @@
   background: #ffffff;
 }
 
-/* ================== 按鈕區塊 ================== */
+/* ================== Buttons ================== */
 .form-actions {
   display: flex;
   justify-content: flex-end;
@@ -167,7 +167,7 @@
   gap: 0.8rem;
 }
 
-/* Submit Report → 拉滿 */
+/* Submit Report → full width */
 .submit-btn {
   flex: 1;
   background: #4b5563 !important;
@@ -184,7 +184,7 @@
   background: #374151 !important;
 }
 
-/* Cancel → 固定寬度 */
+/* Cancel → fixed width */
 .cancel-btn {
   flex-shrink: 0;
   min-width: 120px;
@@ -201,7 +201,7 @@
   background: #f3f4f6 !important;
 }
 
-/* ================== 可用性微調 ================== */
+/* ================== Accessibility tweaks ================== */
 button, .photo-browse {
   outline: none;
 }
@@ -212,7 +212,7 @@ button:focus-visible,
   border-radius: 6px;
 }
 
-/* 📱 RWD: 手機直排 */
+/* 📱 Mobile layout */
 @media (max-width: 768px) {
   .form-actions {
     flex-direction: column;
@@ -225,7 +225,7 @@ button:focus-visible,
   }
 }
 
-/* 📱 極小螢幕優化 (≤380px) */
+/* 📱 Very small screen tweaks (≤380px) */
 @media (max-width: 380px) {
   .report-card { padding: 1rem; }
   .report-header h2 { font-size: 1.2rem; }
@@ -234,14 +234,14 @@ button:focus-visible,
 }
 
 /* =========================================================
-   深色地理位置權限對話框（仿 Android 權限視覺）
+   Dark location permission dialog (Android‑like visual)
    ========================================================= */
 .geo-dark-dialog {
   background: transparent;
   box-shadow: none;
 }
 .geo-dark-body {
-  background: #1f2330;           /* 深色卡片 */
+  background: #1f2330;           /* dark card */
   color: #e5e7eb;
   border-radius: 20px;
   padding: 20px 18px 16px;
@@ -267,7 +267,7 @@ button:focus-visible,
   font-size: 0.9rem;
 }
 
-/* Precise / Approximate 選擇卡片 */
+/* Precise / Approximate choice cards */
 .geo-choices {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -298,7 +298,7 @@ button:focus-visible,
   display: block;
 }
 
-/* 三顆粉色 CTA 按鈕 */
+/* CTA buttons (three options) */
 .geo-cta {
   display: grid;
   gap: 8px;
@@ -316,7 +316,7 @@ button:focus-visible,
   gap: 8px;
 }
 .geo-btn.primary {
-  background: #f9d9cf;  /* 柔粉 */
+  background: #f9d9cf;  /* soft pink */
   color: #0b1220;
 }
 .geo-btn.primary:hover { filter: brightness(0.97); }
@@ -336,14 +336,14 @@ button:focus-visible,
   margin-top: 4px;
 }
 
-/* 窄螢幕插畫高度調整 */
+/* Illustration height on narrow screens */
 @media (max-width: 390px) {
   .geo-illus { height: 88px; }
 }
 
-/* 去除 Dialog 外層的白色背景與陰影 */
+/* Remove default dialog background and shadow */
 .MuiDialog-paper {
   background: transparent !important;
   box-shadow: none !important;
-  overflow: visible; /* 避免裁切陰影或圓角 */
+  overflow: visible; /* avoid clipping shadows or rounded corners */
 }
