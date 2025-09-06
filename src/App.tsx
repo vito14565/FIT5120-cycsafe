@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 import Header from "./components/Header";
 import LandingOverlay from "./components/LandingOverlay";
 import Home from "./pages/Home";
@@ -18,7 +18,6 @@ export default function App() {
     return () => stopAlertsPolling();
   }, []);
 
-  // Make sure the overlay opens even if the event fires before overlay mounts
   useEffect(() => {
     const onOpen = () => setShowLanding(true);
     window.addEventListener("cs:landing:open", onOpen);
@@ -27,16 +26,22 @@ export default function App() {
 
   return (
     <AuthGate>
-      <Router>
+      {/* Key: Mount the entire app under /iteration1 */}
+      <Router basename="/iteration1">
         <Header />
-        {/* Mount once globally; opens on first-load automatically or via event */}
         <LandingOverlay open={showLanding} onClose={() => setShowLanding(false)} />
         <Routes>
-          <Route path="/" element={<Home />} />
+          {/* Make /iteration1/ automatically redirect to /iteration1/homepage */}
+          <Route path="/" element={<Navigate to="/homepage" replace />} />
+
+          <Route path="/homepage" element={<Home />} />
           <Route path="/alerts" element={<AlertsPage />} />
           <Route path="/report" element={<ReportIncident />} />
           <Route path="/plan-route" element={<PlanRoutePage />} />
           <Route path="/insights" element={<DataInsights />} />
+
+          {/* Fallback: any unknown path goes back to homepage */}
+          <Route path="*" element={<Navigate to="/homepage" replace />} />
         </Routes>
       </Router>
     </AuthGate>

@@ -108,12 +108,12 @@ export default function PlanRoutePage() {
 // import "./PlanRoutePage.css";
 // import { useState, useEffect } from "react";
 
-// // 匯入 SVG
+// 
 // import PinIcon from "../assets/pin.svg";
 // import ClockIcon from "../assets/clock.svg";
-// import RouteIcon from "../assets/route.svg"; // infra 用
+// import RouteIcon from "../assets/route.svg"; 
 
-// // ✅ 預留資料結構 (mock data，未來可換成 API response)
+// 
 // const mockRoutes = [
 //   {
 //     id: 1,
@@ -154,7 +154,6 @@ export default function PlanRoutePage() {
 //   },
 // ];
 
-// // ✅ Tips 區塊也抽成陣列
 // const tips = [
 //   "Avoid peak traffic hours (8–10 AM, 5–7 PM) when possible",
 //   "Choose routes with dedicated cycling infrastructure",
@@ -165,18 +164,16 @@ export default function PlanRoutePage() {
 // export default function PlanRoutePage() {
 //   const [routes, setRoutes] = useState(mockRoutes);
 
-//   // ✅ 預留 API 更新 (模擬 fetch)
+//   
 //   useEffect(() => {
-//     // TODO: 之後可換成 fetch("/api/routes") 串接後端
+// 
 //     // fetch("/api/routes").then(res => res.json()).then(data => setRoutes(data));
 //   }, []);
 
 //   return (
 //     <main className="plan-route-page">
-//       {/* Form 區塊 */}
 //       <section className="route-form card">
 //         <h2 className="section-title">
-//           {/* 紙飛機 Icon（已移除中間線） */}
 //           <svg
 //             xmlns="http://www.w3.org/2000/svg"
 //             fill="none"
@@ -226,7 +223,6 @@ export default function PlanRoutePage() {
 //         {routes.map((route) => (
 //           <div key={route.id} className="route-card card">
 //             <div className="route-header">
-//               {/* ✅ 標題 + 距離 & 時間 */}
 //               <div className="title-meta">
 //                 <h4>{route.name}</h4>
 //                 <div className="meta">
@@ -271,7 +267,6 @@ export default function PlanRoutePage() {
 
 //             {route.warnings.length > 0 && (
 //               <div className="warnings">
-//                 {/* ⚠ 已移掉，交給 CSS ::before 自動加 */}
 //                 <strong>Warnings</strong>
 //                 <ul>
 //                   {route.warnings.map((w, i) => (
@@ -288,7 +283,6 @@ export default function PlanRoutePage() {
 //           </div>
 //         ))}
 
-//         {/* Tips 區塊 */}
 //         <div className="tips-box">
 //           <h3>Route Planning Tips</h3>
 //           <ul>

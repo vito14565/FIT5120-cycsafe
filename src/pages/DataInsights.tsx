@@ -107,12 +107,10 @@ export default function DataInsights() {
 // import { useEffect, useState } from "react";
 // import "./DataInsights.css";
 
-// // 匯入 trend icons
 // import trendUp from "../assets/trend-up-svgrepo-com.svg";
 // import trendDown from "../assets/trend-down-svgrepo-com.svg";
 // import trendFlat from "../assets/trending-flat-svgrepo-com.svg";
 
-// // 匯入 section icons
 // import clockIcon from "../assets/clock.svg";             // Risk by Time
 // import pinIcon from "../assets/pin.svg";                // High-Risk Areas
 // import usersIcon from "../assets/users.svg";            // Behavioral Patterns
@@ -145,7 +143,6 @@ export default function DataInsights() {
 //   const [stats, setStats] = useState<Stats | null>(null);
 
 //   useEffect(() => {
-//     // 模擬假資料
 //     setStats({
 //       incidentsAgeGroup: 23,
 //       holidayRisk: 40,
